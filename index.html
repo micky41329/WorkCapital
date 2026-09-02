@@ -17,7 +17,17 @@ input,select{width:100%;padding:12px;border:1px solid #ddd;border-radius:11px;ba
 .save{width:100%;padding:13px;border-radius:12px;background:#202124;color:white;font-weight:700;margin-top:8px;border:0}.empty{text-align:center;color:#999;padding:25px 0}
 .customer{padding:13px 0;border-bottom:1px solid #eee}.customer:last-child{border-bottom:0}.small{cursor:pointer}
 @media(min-width:650px){.modal{align-items:center}.sheet{border-radius:20px;max-width:560px}}
-</style></head><body>
+</style>
+<style>
+  .edit-btn,.update-btn{border:0;border-radius:10px;padding:7px 10px;cursor:pointer}
+  .edit-btn{background:#eee}
+  .update-btn{background:#e8f0ff}
+  .nl-box{margin:12px 0;padding:12px;border:1px solid #ddd;border-radius:14px;background:#fafafa}
+  .nl-box textarea{width:100%;min-height:72px;border:1px solid #ccc;border-radius:10px;padding:10px;box-sizing:border-box}
+  .nl-box button{margin-top:8px;border:0;border-radius:10px;padding:9px 14px}
+  .preview{margin-top:10px;font-size:14px;line-height:1.6}
+</style>
+</head><body>
 <div class="app"><div class="top"><div><h1>我的工作</h1><div class="date" id="date"></div></div><button class="small" id="clear">清除已完成</button></div>
 <button class="add" id="add">＋ 快速新增</button>
 <div class="tabs"><button class="active" data-v="today">📅 當天必做</button><button data-v="waiting">⏳ 等待事項</button><button data-v="customers">⭐ 客戶重點</button><button data-v="done">✅ 已完成</button></div>
@@ -57,4 +67,73 @@ $("add").onclick=()=>{$("modal").classList.add("show");$("due").value=today();$(
 $("cancel").onclick=()=>$("modal").classList.remove("show");
 $("save").onclick=()=>{let t=$("title").value.trim();if(!t){alert("請先輸入工作事項");return}data.push({id:Date.now(),title:t,due:$("due").value,time:$("time").value,status:$("status").value,cat:$("cat").value,customer:$("customer").value.trim(),done:false});store();$("modal").classList.remove("show");$("title").value="";$("customer").value="";$("time").value="";render("today")};
 $("clear").onclick=()=>{data=data.filter(x=>!x.done);store();render("done")};render();
-</script></body></html>
+</script>
+<script>
+(function(){
+  const oldParse = window.parseNaturalLanguage;
+  window.captureNaturalLanguage = function(){
+    const raw = document.getElementById('nlInput').value.trim();
+    if(!raw){ return; }
+
+    let customer = '';
+    const m = raw.match(/^([^，。,、\s]+)(?:說|要|請|希望)/);
+    if(m) customer = m[1];
+
+    let subject = raw;
+    subject = subject.replace(/^.*?(說|要|請|希望)\s*/, '');
+    subject = subject.replace(/^幫她?\s*/,'').replace(/^幫他?\s*/,'').trim();
+
+    let category = '其他';
+    const cats = ['開戶','當沖','授信','下單','手續費','缺款','臨櫃'];
+    for (const c of cats) if(raw.includes(c)){ category=c; break; }
+
+    let status = '待處理';
+    if(/預計.*下週|下週.*出來|等待|等候/.test(raw)) status='等待';
+
+    let detail = '';
+    const cm = raw.match(/內容是(.+)$/);
+    if(cm) detail = cm[1].trim();
+
+    document.getElementById('nlPreview').innerHTML =
+      '<b>整理結果</b><br>' +
+      '客戶：' + (customer||'未指定') + '<br>' +
+      '事項：' + subject + '<br>' +
+      (detail ? '關注內容：' + detail + '<br>' : '') +
+      '分類：' + category + '<br>' +
+      '狀態：' + status +
+      '<br><small>先預覽，不會自動新增，避免系統猜錯。</small>';
+
+    // Try to populate the existing form fields when their IDs are present.
+    const findAndSet = (selectors, value) => {
+      if(!value) return;
+      for(const s of selectors){
+        const el=document.querySelector(s);
+        if(el){ el.value=value; el.dispatchEvent(new Event('input',{bubbles:true})); break; }
+      }
+    };
+    findAndSet(['#customer','#customerName','input[name="customer"]','input[placeholder*="客戶"]'],customer);
+    findAndSet(['#title','#taskTitle','input[name="title"]','input[placeholder*="事項"]'],subject);
+  };
+
+  window.addEventListener('click', function(e){
+    const btn=e.target.closest && e.target.closest('.edit-btn');
+    if(!btn) return;
+    const card=btn.closest('[data-task-id]');
+    if(!card) return;
+    const id=card.dataset.taskId;
+    const raw=prompt('修改事項內容：', card.dataset.taskText || '');
+    if(raw!==null && raw.trim()){
+      card.dataset.taskText=raw.trim();
+      const text=card.querySelector('.task-text,.title,.task-title');
+      if(text) text.textContent=raw.trim();
+      try{
+        const tasks=JSON.parse(localStorage.getItem('micky_tasks')||'[]');
+        const t=tasks.find(x=>String(x.id)===String(id));
+        if(t){ t.title=raw.trim(); localStorage.setItem('micky_tasks',JSON.stringify(tasks)); }
+      }catch(err){}
+    }
+  });
+})();
+</script>
+
+</body></html>
