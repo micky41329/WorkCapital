@@ -84,13 +84,13 @@ textarea,input,select{font:inherit}
     <button class="tab" data-view="customers">⭐ 客戶重點</button>
     <button class="tab" data-view="done">✅ 已完成</button>
   </div>
-  <input id="search" class="search" placeholder="🔎 搜尋客戶、事項、內容、分類……">
+  <div style="font-size:13px;color:#666;margin-top:4px">🔎 這裡可以直接搜尋「客戶姓名、帳號、事項、內容、分類」</div><input id="search" class="search" placeholder="例如：王力宏、12345678、GOWIN、累積量……">
   <div id="content"></div>
 
   <div id="modal" class="modal"><div class="modalbox">
     <h3 style="margin-top:0">✏️ 編輯這筆事項</h3>
     <input type="hidden" id="eid">
-    <div class="field"><label>客戶</label><input id="ec"></div>
+    <div class="field"><label>客戶姓名</label><input id="ec"></div><div class="field"><label>帳號</label><input id="ea" inputmode="numeric" placeholder="可留空"></div>
     <div class="field"><label>事項</label><input id="es"></div>
     <div class="field"><label>內容／備註</label><textarea id="ed"></textarea></div>
     <div class="field"><label>分類</label><select id="ek"></select></div>
@@ -123,52 +123,86 @@ function week(){let d=new Date(), n=d.getDay(), diff=n===0?-6:1-n, m=new Date(d)
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
 function parse(raw){
- let s=raw.trim(),customer='',date='',time='',status='待處理',category='其他';
- let m=s.match(/^([^，。,、\s]+?)(?:說|表示|要|希望|請|那個)/);
- if(m)customer=m[1];
+ let s=raw.trim(),customer='',account='',date='',time='',status='待處理',category='其他';
 
+ // 1) 優先辨識帳號：連續 6~10 位數字。
+ let am=s.match(/(?:^|\s)(\d{6,10})(?=\s|$|[，,、])/);
+ if(am){account=am[1];s=s.replace(am[0], ' ').trim();}
+
+ // 2) 辨識中文姓名。支援：
+ //    王力宏明天要開當沖
+ //    王力宏 明天要開當沖
+ //    12345678 王力宏 明天要開當沖
+ //    王小明說幫我追 GOWIN
+ const actionMarkers=[
+   '今天','今日','明天','明日','下週','下周','這週','本週','預計','說','表示',
+   '要','希望','請','幫','追','開','申請','辦理','調整','約','送','訪','簽'
+ ];
+ let cm=null;
+ // 帳號後面的第一個 2~4 字中文詞，優先當姓名
+ if(account){
+   const r=s.match(/^\s*([\u4e00-\u9fff]{2,4})(?=\s|$|今天|今日|明天|明日|下週|下周|預計|說|表示|要|希望|請|幫|追|開|申請|辦理|調整|約|送|訪|簽)/);
+   if(r)cm=r;
+ }
+ if(!cm){
+   // 開頭中文姓名，遇到明確工作語句就切開
+   cm=s.match(/^([\u4e00-\u9fff]{2,4})(?=\s|今天|今日|明天|明日|下週|下周|預計|說|表示|要|希望|請|幫|追|開|申請|辦理|調整|約|送|訪|簽)/);
+ }
+ if(cm){
+   customer=cm[1];
+   s=s.slice(cm[0].length).trim();
+ }
+
+ // 3) 日期
  let dm=s.match(/(今天|今日|明天|明日)/);
  if(dm)date=(/明/.test(dm[1])?tomorrow():today());
 
+ // 4) 時間
  let tm=s.match(/(上午|下午|早上|晚上)?\s*(\d{1,2})(?:[：:點時](\d{1,2})?)?/);
- if(tm){
+ if(tm && (tm[1] || tm[0].match(/[:：點時]/))){
    let h=+tm[2],mi=+(tm[3]||0);
    if(/下午|晚上/.test(tm[1]||'')&&h<12)h+=12;
    time=String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0');
  }
 
- // 新分類
+ // 5) 分類：優先較具體的詞
  if(/手續費/.test(s))category='手續費申請';
  else if(/臨櫃|代辦/.test(s))category='臨櫃/代辦';
- else if(/約見面|見面|簽文件|送禮|訪客|拜訪/.test(s))category='約見面';
+ else if(/約見面|見面|簽文件|送禮|訪客|拜訪|拜會/.test(s))category='約見面';
  else if(/額度調整|調額|調整額度/.test(s))category='額度調整';
- else {
-   for(const c of ['開戶','當沖','授信']) if(s.includes(c)){category=c;break}
- }
+ else if(/當沖/.test(s))category='當沖';
+ else if(/授信/.test(s))category='授信';
+ else if(/開戶/.test(s))category='開戶';
 
- if(/等待|等候|預計.*出來|下週.*出來|下週.*追|等公司|等經理|等客戶/.test(s))status='等待';
+ if(/等待|等候|預計.*出來|下週.*出來|下週.*追|等公司|等經理|等客戶/.test(s))
+   status='等待';
 
- let subject=s;
- if(customer)subject=subject.replace(customer,'').trim();
- subject=subject.replace(/^(說|表示|要|希望|請)\s*/,'').trim();
- subject=subject.replace(/(?:今天|今日|明天|明日)/g,'').trim();
+ // 6) 事項：去掉日期、時間與「要／說」等語氣，但絕對不把姓名當事項
+ let subject=s
+   .replace(/^(說|表示|要|希望|請)\s*/,'')
+   .replace(/(?:今天|今日|明天|明日)/g,'')
+   .replace(/(?:上午|下午|早上|晚上)?\s*\d{1,2}(?:[：:點時]\d{1,2})?/,'')
+   .trim();
 
  if(category==='當沖' && /開當沖|申請當沖/.test(s))subject='開當沖';
- if(category==='額度調整' && /額度調整|調額|調整額度/.test(s))subject='額度調整';
- if(category==='約見面' && /約見面|見面|簽文件|送禮|訪客|拜訪/.test(s))subject='約見面';
- if(category==='臨櫃/代辦' && /臨櫃|代辦/.test(s))subject='臨櫃／代辦';
- if(category==='手續費申請' && /手續費/.test(s))subject='手續費申請';
+ else if(category==='額度調整')subject='額度調整';
+ else if(category==='約見面')subject='約見面';
+ else if(category==='臨櫃/代辦')subject='臨櫃／代辦';
+ else if(category==='手續費申請')subject='手續費申請';
 
  let detail=(s.match(/(?:內容是|內容為|關注|備註)[：:\s]*(.+)$/)||[])[1]||'';
 
- // 如果是「下週」但沒有精確日期，保持等待，不亂猜日期
  return {
-   id:Date.now()+Math.random(),customer,subject:subject||s,detail:detail.trim(),
+   id:Date.now()+Math.random(),
+   customer,
+   account,
+   subject:subject||'待確認事項',
+   detail:detail.trim(),
    category,status,date,time,
+   raw:raw,
    history:[{at:new Date().toLocaleString('zh-TW'),text:'建立：'+raw}]
  };
 }
-
 function same(a,b){
  if(!a.customer||!b.customer||a.customer!==b.customer)return false;
  const norm=s=>(s||'').replace(/開|申請|追一下|追蹤|進度/g,'');
@@ -195,11 +229,11 @@ function addOrUpdate(x){
 let view='day';
 function matches(t,q){
  if(!q)return true;
- return [t.customer,t.subject,t.detail,t.category,t.status,t.date,t.time].join(' ').toLowerCase().includes(q.toLowerCase())
+ return [t.customer,t.account,t.subject,t.detail,t.category,t.status,t.date,t.time].join(' ').toLowerCase().includes(q.toLowerCase())
 }
 function item(t){
  return `<div class="item">
-   <div><b>${esc(t.customer||'未指定客戶')}</b>｜${esc(t.subject)} <span class="badge">${esc(t.category)}</span></div>
+   <div><b>${esc(t.customer||'未指定客戶')}</b>${t.account?` <span style="font-size:13px;color:#777">(${esc(t.account)})</span>`:''}｜${esc(t.subject)} <span class="badge">${esc(t.category)}</span></div>
    ${t.detail?`<div class="meta">內容：${esc(t.detail)}</div>`:''}
    <div class="meta">${esc(t.status)}${t.date?' · '+t.date:''}${t.time?' '+t.time:''}</div>
    <div class="actions">
@@ -247,7 +281,7 @@ function render(){
 
 window.edit=function(id){
  let t=load().find(x=>String(x.id)===String(id));if(!t)return;
- $('eid').value=t.id;$('ec').value=t.customer||'';$('es').value=t.subject||'';$('ed').value=t.detail||'';
+ $('eid').value=t.id;$('ec').value=t.customer||'';$('ea').value=t.account||'';$('es').value=t.subject||'';$('ed').value=t.detail||'';
  $('ek').value=t.category||'其他';$('est').value=t.status||'待處理';$('edate').value=t.date||'';$('etime').value=t.time||'';
  $('modal').classList.add('open');
 };
@@ -270,7 +304,7 @@ $('noteClear').onclick=()=>{$('noteInput').value=''};
 $('add').onclick=function(){
  const raw=$('input').value.trim();if(!raw)return;
  const x=parse(raw),r=addOrUpdate(x);
- $('msg').textContent=(r.updated?'已更新原本事項：':'已自動分類：')+(r.t.customer||'未指定客戶')+'｜'+r.t.subject+' · '+r.t.category;
+ $('msg').textContent=(r.updated?'已更新原本事項：':'已自動整理：')+(r.t.customer||'未指定客戶')+(r.t.account?'（'+r.t.account+'）':'')+'｜'+r.t.subject+' · '+r.t.category;
  $('input').value='';render();
 };
 $('clear').onclick=()=>{$('input').value='';$('msg').textContent=''};
@@ -284,7 +318,7 @@ document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
 $('cancelEdit').onclick=()=>$('modal').classList.remove('open');
 $('saveEdit').onclick=function(){
  let a=load(),t=a.find(x=>String(x.id)===$('eid').value);if(!t)return;
- t.customer=$('ec').value.trim();t.subject=$('es').value.trim();t.detail=$('ed').value.trim();
+ t.customer=$('ec').value.trim();t.account=$('ea').value.trim();t.subject=$('es').value.trim();t.detail=$('ed').value.trim();
  t.category=$('ek').value;t.status=$('est').value;t.date=$('edate').value;t.time=$('etime').value;
  t.history=t.history||[];t.history.push({at:new Date().toLocaleString('zh-TW'),text:'手動編輯'});
  save(a);$('modal').classList.remove('open');render();
