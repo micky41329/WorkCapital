@@ -123,33 +123,50 @@ function week(){let d=new Date(), n=d.getDay(), diff=n===0?-6:1-n, m=new Date(d)
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
 function parse(raw){
- let s=raw.trim(),customer='',account='',date='',time='',status='待處理',category='其他';
+ let original=raw.trim(),s=original,customer='',account='',date='',time='',status='待處理',category='其他';
 
- // 帳號：6~10 位數字，獨立保存
- let am=s.match(/(?:^|\s)(\d{6,10})(?=\s|$|[，,、])/);
- if(am){account=am[1];s=s.replace(am[0],' ').trim();}
+ // ========= 1. 帳號辨識 =========
+ // 支援「880317陳坤澤」、「880317 陳坤澤」、「880317-陳坤澤」
+ // 也支援純帳號輸入。6~10 位數字視為帳號。
+ let am=s.match(/(?:^|\s|^)(\d{6,10})(?=\s|[\u4e00-\u9fffA-Za-z]|$)/);
+ if(am){
+   account=am[1];
+   s=s.slice(0,am.index)+s.slice(am.index+am[0].length);
+   s=s.trim();
+ }
 
- // 客戶名稱：稱謂、一般中文姓名、英文姓名
- const namePattern=/^([\u4e00-\u9fff]{2,6}(?:先生|小姐|女士|太太|媽媽|媽咪|阿姨|阿嬤|奶奶|叔叔|伯伯|阿伯|阿公|爺爺|老師|老闆|老闆娘|經理|主任|總|哥|姐)|[\u4e00-\u9fff]{2,4}|[A-Za-z][A-Za-z.'-]{1,30})(?=\s|$|今天|今日|明天|明日|後天|大後天|本週|本周|這週|這周|下週|下周|下個月|下個|[0-9]{1,2}\/[0-9]{1,2}|[0-9]{1,2}月|星期|週|預計|說|表示|要|希望|請|幫|追|開|申請|辦理|調整|約|送|訪|簽)/i;
- let cm=s.match(namePattern);
+ // ========= 2. 客戶名稱辨識 =========
+ // 優先抓「帳號後面的姓名」，再抓「姓名＋先生/小姐/媽媽/阿嬤…」
+ // 再支援一般 2~4 字中文姓名與英文名字。
+ const titleName=/([\u4e00-\u9fff]{2,6}(?:先生|小姐|女士|太太|媽媽|媽咪|阿姨|阿嬤|奶奶|叔叔|伯伯|阿伯|阿公|爺爺|老師|老闆|老闆娘|經理|主任|總|哥|姐))/;
+ const genericChinese=/([\u4e00-\u9fff]{2,4})/;
+ const englishName=/([A-Za-z][A-Za-z.'-]{1,30})/;
+
+ let cm=null;
+ // 帳號後面緊接中文姓名：880317陳坤澤要開當沖
+ if(account){
+   const after=s.match(/^([\u4e00-\u9fff]{2,6}(?:先生|小姐|女士|太太|媽媽|媽咪|阿姨|阿嬤|奶奶|叔叔|伯伯|阿伯|阿公|爺爺|老師|老闆|老闆娘|經理|主任|總|哥|姐)|[\u4e00-\u9fff]{2,4})/);
+   if(after) cm=after;
+ }
+ // 開頭就是稱謂姓名
+ if(!cm) cm=s.match(/^([\u4e00-\u9fff]{2,6}(?:先生|小姐|女士|太太|媽媽|媽咪|阿姨|阿嬤|奶奶|叔叔|伯伯|阿伯|阿公|爺爺|老師|老闆|老闆娘|經理|主任|總|哥|姐))/);
+ // 開頭一般中文姓名，且後面接明確工作／日期語句
+ if(!cm) cm=s.match(/^([\u4e00-\u9fff]{2,4})(?=\s|今天|今日|明天|明日|後天|大後天|本週|本周|這週|這周|下週|下周|下個月|週|星期|[0-9]{1,2}[\/\-月]|預計|說|表示|要|希望|請|幫|追|開|申請|辦理|調整|約|送|訪|簽)/);
+ // 英文姓名
+ if(!cm) cm=s.match(/^([A-Za-z][A-Za-z.'-]{1,30})(?=\s|今天|今日|明天|明日|後天|大後天|本週|本周|這週|這周|下週|下周|下個月|週|星期|[0-9]{1,2}[\/\-]|預計|說|表示|要|希望|請|幫|追|開|申請|辦理|調整|約|送|訪|簽)/i);
+
  if(cm){
    customer=cm[1];
    s=s.slice(cm[0].length).trim();
  }
 
  const now=new Date();
- const pad=n=>String(n).padStart(2,'0');
-
- // 日期辨識：
- // 今天、明天、後天、大後天
- // 本週四、下週四、這週四
- // 下個月五號
- // 10/10、09/03、9/3、9月3日、9月3號
+ const weekdayMap={'日':0,'天':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6};
  function makeDate(y,m,d){
    const x=new Date(y,m-1,d);
    return day(x);
  }
- function weekdayDate(target, nextWeek){
+ function weekdayDate(target,nextWeek=false){
    const x=new Date(now), current=x.getDay();
    let delta=(target-current+7)%7;
    if(nextWeek) delta+=7;
@@ -157,104 +174,78 @@ function parse(raw){
    return day(x);
  }
 
- let dateMatched=false;
-
- // 大後天要先於後天
+ // ========= 3. 日期辨識 =========
+ // 今天／明天／後天／大後天
  if(/大後天/.test(s)){
-   const x=new Date(now);x.setDate(x.getDate()+3);date=day(x);dateMatched=true;
+   const x=new Date(now);x.setDate(x.getDate()+3);date=day(x);
  }else if(/後天/.test(s)){
-   const x=new Date(now);x.setDate(x.getDate()+2);date=day(x);dateMatched=true;
+   const x=new Date(now);x.setDate(x.getDate()+2);date=day(x);
  }else if(/明天|明日/.test(s)){
-   date=tomorrow();dateMatched=true;
+   date=tomorrow();
  }else if(/今天|今日/.test(s)){
-   date=today();dateMatched=true;
+   date=today();
  }
 
- // 本週／這週／下週 + 星期／週幾
- const wd=s.match(/(本週|本周|這週|這周|下週|下周)\s*(?:星期|週)([一二三四五六日天])/);
- const wdMap={'日':0,'天':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6};
+ // 本週四／這週四／下週四／本周四／下周四
+ // 「週四／星期四」單獨出現 = 本週四
+ let wd=s.match(/(本週|本周|這週|這周|下週|下周)?\s*(?:星期|週)([一二三四五六日天])/);
  if(wd){
-   date=weekdayDate(wdMap[wd[2]],/下週|下周/.test(wd[1]));
-   dateMatched=true;
+   date=weekdayDate(weekdayMap[wd[2]],/下週|下周/.test(wd[1]||''));
  }else{
-   // 「本週四／下週四」沒有寫星期、週
-   const wd2=s.match(/(本週|本周|這週|這周|下週|下周)\s*([一二三四五六日天])/);
-   if(wd2){
-     date=weekdayDate(wdMap[wd2[2]],/下週|下周/.test(wd2[1]));
-     dateMatched=true;
-   }
+   // 口語：「本週四」「下週四」已涵蓋；再支援「週四／星期四」以外的裸「四」
+   let wd2=s.match(/(本週|本周|這週|這周|下週|下周)\s*([一二三四五六日天])/);
+   if(wd2) date=weekdayDate(weekdayMap[wd2[2]],/下週|下周/.test(wd2[1]));
  }
 
  // 下個月五號／下個月5日
- const nextMonth=s.match(/下個月\s*(\d{1,2})\s*(?:日|號)/);
- if(nextMonth){
+ let nm=s.match(/下個月\s*(\d{1,2})\s*(?:日|號)/);
+ if(nm){
    let y=now.getFullYear(),m=now.getMonth()+2;
    if(m>12){m=1;y++}
-   date=makeDate(y,m,+nextMonth[1]);dateMatched=true;
+   date=makeDate(y,m,+nm[1]);
  }
 
- // 月/日格式：10/10、09/03、9/3；也支援 10-10
- const slash=s.match(/(?:^|[^\d])(\d{1,2})\s*[\/\-]\s*(\d{1,2})(?!\d)/);
- if(slash){
-   let m=+slash[1],d=+slash[2],y=now.getFullYear();
-   // 如果今年這個日期已經過去，仍照「輸入日期」理解為今年，不自行改成年份
-   date=makeDate(y,m,d);dateMatched=true;
- }
+ // 10/10、09/03、9-3
+ let slash=s.match(/(?:^|[^\d])(\d{1,2})\s*[\/\-]\s*(\d{1,2})(?!\d)/);
+ if(slash) date=makeDate(now.getFullYear(),+slash[1],+slash[2]);
 
- // 中文月日：9月3日、09月03號
- if(!dateMatched){
-   const md=s.match(/(?:^|[^\d])(\d{1,2})\s*月\s*(\d{1,2})\s*(?:日|號)/);
-   if(md){
-     date=makeDate(now.getFullYear(),+md[1],+md[2]);dateMatched=true;
-   }
- }
+ // 9月3日／09月03號
+ let md=s.match(/(?:^|[^\d])(\d{1,2})\s*月\s*(\d{1,2})\s*(?:日|號)/);
+ if(md) date=makeDate(now.getFullYear(),+md[1],+md[2]);
 
- // 時間
+ // ========= 4. 時間 =========
  let tm=s.match(/(上午|下午|早上|晚上)?\s*(\d{1,2})(?:[：:點時](\d{1,2})?)?/);
  if(tm && (tm[1] || /[:：點時]/.test(tm[0]))){
    let h=+tm[2],mi=+(tm[3]||0);
    if(/下午|晚上/.test(tm[1]||'')&&h<12)h+=12;
-   time=pad(h)+':'+pad(mi);
+   time=String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0');
  }
 
- // ===== 分類規則：符合任一關鍵字就歸類；全部不符合才是其他 =====
- const lower=s.toLowerCase();
-
- // 臨櫃：要臨櫃、要來辦理、匯撥、臨櫃申請文件、要來找我
- if(/臨櫃|來辦理|辦理|匯撥|要來找我|來找我/.test(s))
+ // ========= 5. 分類 =========
+ if(/申請手續費|手續費|折數|[0-9]+(?:\.[0-9]+)?折/.test(s))
+   category='手續費申請';
+ else if(/臨櫃|要來辦理|來辦理|匯撥|臨櫃申請|要來找我|來找我/.test(s))
    category='臨櫃/代辦';
-
- // 約見面：送禮、簽文件、訪客、下台南、去桃園、見面／拜訪
  else if(/送禮|簽文件|訪客|下台南|去桃園|約見面|見面|拜訪|拜會/.test(s))
    category='約見面';
-
- // 手續費：申請手續費、手續費、折數、幾折
- else if(/申請手續費|手續費|折數|[0-9]+(?:\.[0-9]+)?折/.test(s))
-   category='手續費申請';
-
- // 額度：額度、調整額度、調額、開額度
- else if(/額度|調額|開額度/.test(s))
+ else if(/額度|調額|開額度|調整額度/.test(s))
    category='額度';
-
- // 授信：T5/T+5、不限用途、信用、融資融券、便利貸款、交割款借貸
- else if(/(?:^|[^a-z])t\s*\+?\s*5(?:$|[^a-z])|不限用途|信用|融資融券|便利貸款|交割款借貸/i.test(s))
+ else if(/(?:^|[^a-z])t\s*\+?\s*5(?:$|[^a-z])|t5|不限用途|信用|融資融券|便利貸款|交割款借貸/i.test(s))
    category='授信';
-
- // 當沖、開戶
  else if(/當沖/.test(s))
    category='當沖';
  else if(/開戶/.test(s))
    category='開戶';
 
- // 等待狀態
  if(/等待|等候|預計.*出來|下週.*出來|下週.*追|等公司|等經理|等客戶/.test(s))
    status='等待';
 
- // 事項文字：移除客戶、日期、時間與語氣，不把姓名當成事項
+ // ========= 6. 事項 =========
  let subject=s
    .replace(/^(說|表示|要|希望|請)\s*/,'')
    .replace(/(?:今天|今日|明天|明日|後天|大後天)/g,'')
    .replace(/(?:本週|本周|這週|這周|下週|下周)\s*(?:星期|週)?[一二三四五六日天]?/g,'')
+   .replace(/(?:星期|週)[一二三四五六日天]/g,'')
    .replace(/下個月\s*\d{1,2}\s*(?:日|號)/g,'')
    .replace(/\d{1,2}\s*[\/\-]\s*\d{1,2}/g,'')
    .replace(/\d{1,2}\s*月\s*\d{1,2}\s*(?:日|號)/g,'')
@@ -266,7 +257,7 @@ function parse(raw){
  else if(category==='約見面') subject='約見面';
  else if(category==='臨櫃/代辦') subject='臨櫃／代辦';
  else if(category==='手續費申請') subject='手續費申請';
- else if(category==='授信' && /(?:t\s*\+?\s*5|不限用途|便利貸款|交割款借貸|融資融券)/i.test(s)) subject='授信';
+ else if(category==='授信' && /(?:t\s*\+?\s*5|t5|不限用途|便利貸款|交割款借貸|融資融券)/i.test(s)) subject='授信';
 
  let detail=(s.match(/(?:內容是|內容為|關注|備註)[：:\s]*(.+)$/)||[])[1]||'';
 
@@ -277,8 +268,8 @@ function parse(raw){
    subject:subject||'待確認事項',
    detail:detail.trim(),
    category,status,date,time,
-   raw:raw,
-   history:[{at:new Date().toLocaleString('zh-TW'),text:'建立：'+raw}]
+   raw:original,
+   history:[{at:new Date().toLocaleString('zh-TW'),text:'建立：'+original}]
  };
 }
 function same(a,b){
@@ -398,6 +389,15 @@ $('saveEdit').onclick=function(){
  let a=load(),t=a.find(x=>String(x.id)===$('eid').value);if(!t)return;
  t.customer=$('ec').value.trim();t.account=$('ea').value.trim();t.subject=$('es').value.trim();t.detail=$('ed').value.trim();
  t.category=$('ek').value;t.status=$('est').value;t.date=$('edate').value;t.time=$('etime').value;
+ // 編輯時若事項／內容明確出現分類關鍵字，自動同步分類。
+ const text=(t.subject+' '+t.detail).trim();
+ if(/申請手續費|手續費|折數|[0-9]+(?:\.[0-9]+)?折/.test(text))t.category='手續費申請';
+ else if(/臨櫃|要來辦理|來辦理|匯撥|臨櫃申請|要來找我|來找我/.test(text))t.category='臨櫃/代辦';
+ else if(/送禮|簽文件|訪客|下台南|去桃園|約見面|見面|拜訪|拜會/.test(text))t.category='約見面';
+ else if(/額度|調額|開額度|調整額度/.test(text))t.category='額度';
+ else if(/t\s*\+?\s*5|t5|不限用途|信用|融資融券|便利貸款|交割款借貸/i.test(text))t.category='授信';
+ else if(/當沖/.test(text))t.category='當沖';
+ else if(/開戶/.test(text))t.category='開戶';
  t.history=t.history||[];t.history.push({at:new Date().toLocaleString('zh-TW'),text:'手動編輯'});
  save(a);$('modal').classList.remove('open');render();
 };
