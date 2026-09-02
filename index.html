@@ -125,70 +125,82 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function parse(raw){
  let s=raw.trim(),customer='',account='',date='',time='',status='待處理',category='其他';
 
- // 1) 優先辨識帳號：連續 6~10 位數字。
+ // 帳號：6~10 位數字，獨立保存
  let am=s.match(/(?:^|\s)(\d{6,10})(?=\s|$|[，,、])/);
- if(am){account=am[1];s=s.replace(am[0], ' ').trim();}
+ if(am){account=am[1];s=s.replace(am[0],' ').trim();}
 
- // 2) 辨識中文姓名。支援：
- //    王力宏明天要開當沖
- //    王力宏 明天要開當沖
- //    12345678 王力宏 明天要開當沖
- //    王小明說幫我追 GOWIN
- const actionMarkers=[
-   '今天','今日','明天','明日','下週','下周','這週','本週','預計','說','表示',
-   '要','希望','請','幫','追','開','申請','辦理','調整','約','送','訪','簽'
- ];
- let cm=null;
- // 帳號後面的第一個 2~4 字中文詞，優先當姓名
- if(account){
-   const r=s.match(/^\s*([\u4e00-\u9fff]{2,4})(?=\s|$|今天|今日|明天|明日|下週|下周|預計|說|表示|要|希望|請|幫|追|開|申請|辦理|調整|約|送|訪|簽)/);
-   if(r)cm=r;
- }
- if(!cm){
-   // 開頭中文姓名，遇到明確工作語句就切開
-   cm=s.match(/^([\u4e00-\u9fff]{2,4})(?=\s|今天|今日|明天|明日|下週|下周|預計|說|表示|要|希望|請|幫|追|開|申請|辦理|調整|約|送|訪|簽)/);
- }
+ // 客戶名稱：
+ // ① 翁先生、羅媽媽、黃阿嬤、王小姐、林太太、陳老師等稱謂
+ // ② 一般 2~4 字中文姓名
+ // ③ 英文姓名，例如 Jennie、Kevin
+ const namePattern=/^([\u4e00-\u9fff]{2,6}(?:先生|小姐|女士|太太|媽媽|媽咪|阿姨|阿嬤|奶奶|叔叔|伯伯|阿伯|阿公|爺爺|老師|老闆|老闆娘|經理|主任|總|哥|姐)|[\u4e00-\u9fff]{2,4}|[A-Za-z][A-Za-z.'-]{1,30})(?=\s|$|今天|今日|明天|明日|本週|本周|這週|這周|週[一二三四五六日天]|星期[一二三四五六日天]|下週|下周|預計|說|表示|要|希望|請|幫|追|開|申請|辦理|調整|約|送|訪|簽)/i;
+
+ let cm=s.match(namePattern);
  if(cm){
    customer=cm[1];
    s=s.slice(cm[0].length).trim();
  }
 
- // 3) 日期
- let dm=s.match(/(今天|今日|明天|明日)/);
- if(dm)date=(/明/.test(dm[1])?tomorrow():today());
+ // 日期：今天／明天／本週或這週的星期幾／下週星期幾
+ const now=new Date();
+ const weekdayMap={'日':0,'天':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6};
 
- // 4) 時間
+ function dateForWeekday(target, nextWeek){
+   let d=new Date(now), current=d.getDay();
+   let delta=(target-current+7)%7;
+   if(nextWeek) delta += 7;
+   // 「本週四」若今天就是週四，通常代表今天；否則往本週該日
+   d.setDate(d.getDate()+delta);
+   return day(d);
+ }
+
+ let dm=s.match(/(今天|今日|明天|明日|本週|本周|這週|這周|下週|下周)?\s*(?:星期|週)([一二三四五六日天])/);
+ if(dm){
+   date=dateForWeekday(weekdayMap[dm[2]], /下週|下周/.test(dm[1]||''));
+ }else{
+   let simple=s.match(/(今天|今日|明天|明日)/);
+   if(simple) date=/明/.test(simple[1])?tomorrow():today();
+ }
+
+ // 單獨「本週四」也支援，若格式沒有「星期／週」以外的問題
+ if(!date){
+   let dm2=s.match(/(本週|本周|這週|這周|下週|下周)\s*([一二三四五六日天])/);
+   if(dm2)date=dateForWeekday(weekdayMap[dm2[2]],/下週|下周/.test(dm2[1]));
+ }
+
+ // 時間
  let tm=s.match(/(上午|下午|早上|晚上)?\s*(\d{1,2})(?:[：:點時](\d{1,2})?)?/);
- if(tm && (tm[1] || tm[0].match(/[:：點時]/))){
+ if(tm && (tm[1] || /[:：點時]/.test(tm[0]))){
    let h=+tm[2],mi=+(tm[3]||0);
    if(/下午|晚上/.test(tm[1]||'')&&h<12)h+=12;
    time=String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0');
  }
 
- // 5) 分類：優先較具體的詞
- if(/手續費/.test(s))category='手續費申請';
- else if(/臨櫃|代辦/.test(s))category='臨櫃/代辦';
- else if(/約見面|見面|簽文件|送禮|訪客|拜訪|拜會/.test(s))category='約見面';
- else if(/額度調整|調額|調整額度/.test(s))category='額度調整';
- else if(/當沖/.test(s))category='當沖';
- else if(/授信/.test(s))category='授信';
- else if(/開戶/.test(s))category='開戶';
+ // 分類
+ if(/手續費/.test(s)) category='手續費申請';
+ else if(/臨櫃|代辦/.test(s)) category='臨櫃/代辦';
+ else if(/約見面|見面|簽文件|送禮|訪客|拜訪|拜會/.test(s)) category='約見面';
+ else if(/額度調整|調額|調整額度|開額度|調額度/.test(s)) category='額度調整';
+ else if(/當沖/.test(s)) category='當沖';
+ else if(/授信/.test(s)) category='授信';
+ else if(/開戶/.test(s)) category='開戶';
 
  if(/等待|等候|預計.*出來|下週.*出來|下週.*追|等公司|等經理|等客戶/.test(s))
    status='等待';
 
- // 6) 事項：去掉日期、時間與「要／說」等語氣，但絕對不把姓名當事項
+ // 事項文字：絕不把已辨識的客戶名稱當成事項
  let subject=s
    .replace(/^(說|表示|要|希望|請)\s*/,'')
-   .replace(/(?:今天|今日|明天|明日)/g,'')
+   .replace(/(?:今天|今日|明天|明日|本週|本周|這週|這周|下週|下周)\s*/g,'')
+   .replace(/(?:星期|週)[一二三四五六日天]/g,'')
    .replace(/(?:上午|下午|早上|晚上)?\s*\d{1,2}(?:[：:點時]\d{1,2})?/,'')
    .trim();
 
- if(category==='當沖' && /開當沖|申請當沖/.test(s))subject='開當沖';
- else if(category==='額度調整')subject='額度調整';
- else if(category==='約見面')subject='約見面';
- else if(category==='臨櫃/代辦')subject='臨櫃／代辦';
- else if(category==='手續費申請')subject='手續費申請';
+ if(category==='當沖' && /開當沖|申請當沖/.test(s)) subject='開當沖';
+ else if(category==='額度調整') subject='額度調整';
+ else if(category==='約見面') subject='約見面';
+ else if(category==='臨櫃/代辦') subject='臨櫃／代辦';
+ else if(category==='手續費申請') subject='手續費申請';
 
  let detail=(s.match(/(?:內容是|內容為|關注|備註)[：:\s]*(.+)$/)||[])[1]||'';
 
@@ -229,7 +241,7 @@ function addOrUpdate(x){
 let view='day';
 function matches(t,q){
  if(!q)return true;
- return [t.customer,t.account,t.subject,t.detail,t.category,t.status,t.date,t.time].join(' ').toLowerCase().includes(q.toLowerCase())
+ return [t.customer,t.account,t.subject,t.detail,t.category,t.status,t.date,t.time,t.raw].join(' ').toLowerCase().includes(q.toLowerCase())
 }
 function item(t){
  return `<div class="item">
@@ -269,7 +281,7 @@ function render(){
  if(view==='customers'){
    title='⭐ 客戶重點';
    const map={};
-   a.filter(x=>x.customer).forEach(x=>{(map[x.customer]??=[]).push(x)});
+   a.forEach(x=>{const key=x.customer||'未指定客戶';(map[key]??=[]).push(x)});
    const body=Object.keys(map).length
      ?Object.keys(map).map(c=>`<div class="item"><b>${esc(c)}</b>${map[c].map(item).join('')}</div>`).join('')
      :'<div class="empty">目前沒有客戶重點</div>';
