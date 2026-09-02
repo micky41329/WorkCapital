@@ -5,7 +5,7 @@
 *{box-sizing:border-box}body{margin:0;background:#f5f6f8;color:#202124;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC",sans-serif}
 .app{max-width:720px;margin:auto;padding:18px 16px 90px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
 h1{font-size:25px;margin:0}.date,.muted{color:#777;font-size:13px}.add{width:100%;padding:14px;border-radius:14px;background:#202124;color:white;font-weight:700;margin-bottom:14px;border:0}
-.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:14px}.tabs button,.small{padding:10px 5px;border-radius:12px;background:white;border:1px solid #e4e5e7;font-size:13px}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:14px}.category-shortcuts{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.category-shortcuts button{padding:12px 8px;border-radius:12px;background:white;border:1px solid #e4e5e7;font-size:14px}.category-shortcuts button.active{background:#202124;color:white}.tabs button,.small{padding:10px 5px;border-radius:12px;background:white;border:1px solid #e4e5e7;font-size:13px}
 .tabs button.active{background:#202124;color:white}.card{background:white;border:1px solid #e4e5e7;border-radius:17px;padding:16px;margin-bottom:12px}
 .card h2{font-size:17px;margin:0 0 4px}.task{display:flex;gap:11px;padding:13px 0;border-bottom:1px solid #eee}.task:last-child{border-bottom:0}
 .check{width:22px;height:22px;border:2px solid #aaa;border-radius:6px;background:white;flex:0 0 auto}.check.done{background:#202124;color:white;border-color:#202124}.check.done:after{content:"✓";font-size:14px}
@@ -86,6 +86,21 @@ textarea,input,select{font:inherit}
   </div>
   <div style="font-size:13px;color:#666;margin-top:4px">🔎 這裡可以直接搜尋「客戶姓名、帳號、事項、內容、分類」</div><input id="search" class="search" placeholder="例如：王力宏、12345678、GOWIN、累積量……">
   <div id="content"></div>
+
+  <div class="card" id="categoryShortcuts" style="margin-top:14px">
+    <div style="font-size:15px;font-weight:700;margin-bottom:9px">📂 各項歸類</div>
+    <div style="font-size:13px;color:#777;margin-bottom:9px">直接點分類查看這一類的所有事項，不用另外搜尋。</div>
+    <div class="category-shortcuts">
+      <button type="button" data-category="開戶">開戶</button>
+      <button type="button" data-category="當沖">當沖</button>
+      <button type="button" data-category="授信">授信</button>
+      <button type="button" data-category="手續費申請">手續費申請</button>
+      <button type="button" data-category="臨櫃/代辦">臨櫃/代辦</button>
+      <button type="button" data-category="約見面">約見面</button>
+      <button type="button" data-category="額度調整">額度調整</button>
+      <button type="button" data-category="其他">其他</button>
+    </div>
+  </div>
 
   <div id="modal" class="modal"><div class="modalbox">
     <h3 style="margin-top:0">✏️ 編輯這筆事項</h3>
@@ -326,6 +341,7 @@ function addOrUpdate(x){
 }
 
 let view='day';
+let categoryFilter='';
 function matches(t,q){
  if(!q)return true;
  return [t.customer,t.account,t.subject,t.detail,t.category,t.status,t.date,t.time,t.raw].join(' ').toLowerCase().includes(q.toLowerCase())
@@ -361,11 +377,14 @@ function render(){
  let a=load(),q=$('search').value.trim(),t=today(),tm=tomorrow(),[w1,w2]=week();
  a=a.filter(x=>matches(x,q));
  let title='',items=[];
- if(view==='day'){title='📅 當天必做';items=a.filter(x=>x.status!=='已完成'&&x.date===t)}
- if(view==='tomorrow'){title='🔔 明日必做';items=a.filter(x=>x.status!=='已完成'&&x.date===tm)}
- if(view==='week'){title='🗓️ 行事曆';items=a.filter(x=>x.status!=='已完成'&&x.date>=w1&&x.date<=w2)}
- if(view==='waiting'){title='⏳ 等待中';items=a.filter(x=>x.status==='等待')}
- if(view==='customers'){
+ if(categoryFilter){
+   title='📂 '+categoryFilter;
+   items=a.filter(x=>x.category===categoryFilter);
+ }else if(view==='day'){title='📅 當天必做';items=a.filter(x=>x.status!=='已完成'&&x.date===t)}
+ else if(view==='tomorrow'){title='🔔 明日必做';items=a.filter(x=>x.status!=='已完成'&&x.date===tm)}
+ else if(view==='week'){title='🗓️ 行事曆';items=a.filter(x=>x.status!=='已完成'&&x.date>=w1&&x.date<=w2)}
+ else if(view==='waiting'){title='⏳ 等待中';items=a.filter(x=>x.status==='等待')}
+ else if(view==='customers'){
    title='⭐ 客戶重點';
    const map={};
    a.forEach(x=>{const key=x.customer||'未指定客戶';(map[key]??=[]).push(x)});
@@ -374,7 +393,7 @@ function render(){
      :'<div class="empty">目前沒有客戶重點</div>';
    $('content').innerHTML=`<section class="section"><h3>${title}</h3>${body}</section>`;return;
  }
- if(view==='done'){title='✅ 已完成';items=a.filter(x=>x.status==='已完成')}
+ else if(view==='done'){title='✅ 已完成';items=a.filter(x=>x.status==='已完成')}
  $('content').innerHTML=`<section class="section"><h3>${title}</h3>${items.length?items.map(item).join(''):'<div class="empty">目前沒有事項</div>'}</section>`;
 }
 
@@ -409,9 +428,19 @@ $('add').onclick=function(){
 $('clear').onclick=()=>{$('input').value='';$('msg').textContent=''};
 $('search').oninput=render;
 
+document.querySelectorAll('#categoryShortcuts button').forEach(b=>b.onclick=()=>{
+  const selected=b.dataset.category||'';
+  categoryFilter=(categoryFilter===selected?'':selected);
+  document.querySelectorAll('#categoryShortcuts button').forEach(x=>x.classList.toggle('active',x===b&&categoryFilter===selected));
+  render();
+});
+
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
- b.classList.add('active');view=b.dataset.view;render();
+ b.classList.add('active');view=b.dataset.view;
+ categoryFilter='';
+ document.querySelectorAll('#categoryShortcuts button').forEach(x=>x.classList.remove('active'));
+ render();
 });
 
 $('cancelEdit').onclick=()=>$('modal').classList.remove('open');
