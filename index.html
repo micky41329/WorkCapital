@@ -17,229 +17,134 @@ input,select{width:100%;padding:12px;border:1px solid #ddd;border-radius:11px;ba
 .save{width:100%;padding:13px;border-radius:12px;background:#202124;color:white;font-weight:700;margin-top:8px;border:0}.empty{text-align:center;color:#999;padding:25px 0}
 .customer{padding:13px 0;border-bottom:1px solid #eee}.customer:last-child{border-bottom:0}.small{cursor:pointer}
 @media(min-width:650px){.modal{align-items:center}.sheet{border-radius:20px;max-width:560px}}
-</style>
+</style></head>
 <style>
-  body{padding-bottom:40px}
-  #v4{max-width:760px;margin:0 auto;padding:12px}
-  #v4 *{box-sizing:border-box}
-  .v4-card{background:#fff;border:1px solid #ddd;border-radius:16px;padding:14px;margin:10px 0}
-  .v4-title{font-weight:800;font-size:18px;margin-bottom:8px}
-  .v4-input{width:100%;min-height:80px;border:1px solid #ccc;border-radius:12px;padding:11px;font-size:15px;resize:vertical}
-  .v4-btn{border:0;border-radius:10px;padding:9px 12px;cursor:pointer;font-weight:700}
-  .v4-primary{background:#111;color:#fff}
-  .v4-light{background:#eee}
-  .v4-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:12px 0}
-  .v4-tab{padding:10px 5px;border:1px solid #ddd;border-radius:10px;background:#fff}
-  .v4-tab.active{font-weight:800;background:#f0f0f0}
-  .v4-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
-  .v4-section{margin-top:16px}
-  .v4-section h3{margin:0 0 8px;font-size:16px}
-  .v4-item{border:1px solid #e0e0e0;border-radius:13px;padding:11px;margin:7px 0;background:#fff}
-  .v4-meta{font-size:13px;color:#666;margin-top:5px;line-height:1.5}
-  .v4-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
-  .v4-actions button{border:0;border-radius:8px;padding:7px 9px}
-  .v4-empty{color:#777;font-size:14px;padding:10px}
-  .v4-modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;padding:16px;z-index:9999}
-  .v4-modal.open{display:flex}
-  .v4-modal-box{background:#fff;border-radius:16px;padding:16px;width:min(520px,100%);max-height:90vh;overflow:auto}
-  .v4-field{margin:8px 0}.v4-field label{display:block;font-size:13px;margin-bottom:4px;color:#555}
-  .v4-field input,.v4-field textarea,.v4-field select{width:100%;padding:9px;border:1px solid #ccc;border-radius:9px}
-  .v4-history{border-left:3px solid #ddd;padding-left:9px;margin-top:8px;font-size:13px;color:#555}
-  @media(max-width:520px){.v4-grid{grid-template-columns:1fr}.v4-tabs{grid-template-columns:repeat(2,1fr)}}
+*{box-sizing:border-box}body{margin:0;background:#f6f6f6;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#222}
+#v5{max-width:780px;margin:auto;padding:14px}
+.capture{background:#fff;border:1px solid #ddd;border-radius:16px;padding:14px;position:sticky;top:0;z-index:10}
+.capture textarea{width:100%;min-height:78px;border:1px solid #ccc;border-radius:12px;padding:11px;font-size:16px;resize:vertical}
+.btn{border:0;border-radius:10px;padding:9px 13px;font-weight:700;cursor:pointer}.primary{background:#111;color:#fff}.light{background:#eee}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:12px 0}.tab{border:1px solid #ddd;background:#fff;border-radius:10px;padding:10px 5px;cursor:pointer}.tab.active{font-weight:800;background:#eaeaea}
+.search{width:100%;padding:10px;border:1px solid #ccc;border-radius:10px;margin:8px 0}
+.section{margin:18px 0}.section h3{font-size:17px;margin:0 0 8px}.item{background:#fff;border:1px solid #ddd;border-radius:14px;padding:12px;margin:8px 0}
+.meta{font-size:13px;color:#666;margin-top:5px;line-height:1.5}.actions{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}.actions button{border:0;border-radius:8px;padding:7px 9px;cursor:pointer}
+.badge{display:inline-block;padding:3px 7px;border-radius:7px;background:#eee;font-size:12px;margin-left:5px}.empty{color:#777;font-size:14px;padding:8px}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);align-items:center;justify-content:center;padding:15px;z-index:99}.modal.open{display:flex}.modalbox{background:#fff;border-radius:16px;padding:16px;width:min(520px,100%);max-height:90vh;overflow:auto}
+.field{margin:8px 0}.field label{font-size:13px;color:#555;display:block;margin-bottom:4px}.field input,.field textarea,.field select{width:100%;padding:9px;border:1px solid #ccc;border-radius:9px}
+@media(max-width:520px){.tabs{grid-template-columns:repeat(2,1fr)}}
 </style>
-<style>body > *:not(#v4){display:none!important} body{margin:0!important;background:#f7f7f7!important}</style></head><body>
-<div class="app"><div class="top"><div><h1>我的工作</h1><div class="date" id="date"></div></div><button class="small" id="clear">清除已完成</button></div>
-<button class="add" id="add">＋ 快速新增</button>
-<div class="tabs"><button class="active" data-v="today">📅 當天必做</button><button data-v="waiting">⏳ 等待事項</button><button data-v="customers">⭐ 客戶重點</button><button data-v="done">✅ 已完成</button></div>
-<div id="content"></div></div>
-<div class="modal" id="modal"><div class="sheet"><h2>新增工作事項</h2>
-<div class="field"><label>我要做什麼？</label><input id="title" placeholder="例如：聯絡王先生"></div>
-<div class="field"><label>日期</label><input id="due" type="date"></div><div class="field"><label>時間（可不填）</label><input id="time" type="time"></div>
-<div class="row"><div class="field"><label>狀態</label><select id="status"><option value="today">當天必做</option><option value="waiting">等待事項</option></select></div>
-<div class="field"><label>工作分類</label><select id="cat"><option>開戶</option><option>當沖</option><option>授信</option><option>下單</option><option>手續費</option><option>缺款</option><option>臨櫃</option><option>其他</option></select></div></div>
-<div class="field"><label>客戶（可不填）</label><input id="customer" placeholder="姓名或帳號"></div>
-<button class="save" id="save">加入工作</button><button class="small" style="width:100%;margin-top:8px" id="cancel">取消</button></div></div>
-<script>
-const K="micky_work_center_v1";
-let data=JSON.parse(localStorage.getItem(K)||"null")||[
-{id:1,title:"聯絡王先生",due:"2026-09-02",time:"14:10",status:"today",cat:"客戶",customer:"王先生",done:false},
-{id:2,title:"通知今日缺款客戶",due:"2026-09-02",time:"",status:"today",cat:"缺款",customer:"",done:false},
-{id:3,title:"陳小姐手續費申請",due:"2026-09-02",time:"",status:"today",cat:"手續費",customer:"陳小姐",done:false},
-{id:4,title:"確認王先生授信需求",due:"",time:"",status:"waiting",cat:"授信",customer:"王先生",done:false}];
-const $=x=>document.getElementById(x), today=()=>new Date().toISOString().slice(0,10);
-function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
-function store(){localStorage.setItem(K,JSON.stringify(data))}
-$("date").textContent=new Date().toLocaleDateString("zh-TW",{year:"numeric",month:"numeric",day:"numeric",weekday:"short"});
-function render(v="today"){
-document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("active",b.dataset.v===v));
-if(v==="customers"){renderCustomers();return}
-let list=v==="done"?data.filter(x=>x.done):data.filter(x=>!x.done&&x.status===v&&(v==="waiting"||!x.due||x.due===today()));
-$("content").innerHTML='<div class="card"><h2>'+({today:"今天真正要做的事",waiting:"等待／之後要追蹤",done:"已完成"}[v])+'</h2><div class="muted">'+(v==="today"?"只放今天必須處理的事項":v==="waiting"?"已記下來，但目前不用佔用今天注意力":"保留工作歷史")+'</div><div id="list"></div></div>';
-let box=$("list");if(!list.length){box.innerHTML='<div class="empty">目前沒有事項</div>';return}
-list.sort((a,b)=>(a.time||"99:99").localeCompare(b.time||"99:99")).forEach(x=>{let e=document.createElement("div");e.className="task"+(x.done?" done":"");
-e.innerHTML='<button class="check '+(x.done?"done":"")+'"></button><div style="flex:1"><div class="title">'+esc(x.title)+'</div><div class="meta">'+(x.due||"")+'　'+(x.time||"")+(x.customer?"　·　"+esc(x.customer):"")+'</div><span class="tag">'+esc(x.cat)+'</span></div>';
-e.querySelector(".check").onclick=()=>{x.done=!x.done;store();render(v)};box.appendChild(e)})}
-function renderCustomers(){ $("content").innerHTML='<div class="card"><h2>⭐ 客戶重點</h2><div class="muted">搜尋姓名／帳號，查看這個客戶的工作紀錄</div><input id="q" placeholder="搜尋姓名或帳號"><div id="cl"></div></div>';
-function draw(q=""){let g={};data.filter(x=>x.customer&&x.customer.toLowerCase().includes(q.toLowerCase())).forEach(x=>(g[x.customer]??=[]).push(x));$("cl").innerHTML=Object.entries(g).map(([n,a])=>'<div class="customer"><b>⭐ '+esc(n)+'</b>'+a.map(x=>'<div style="font-size:13px;margin-top:6px">'+(x.done?"✓":"□")+' '+esc(x.title)+' <span class="muted">｜'+esc(x.cat)+'</span></div>').join("")+'</div>').join("")||'<div class="empty">找不到客戶</div>'}
-draw();$("q").oninput=e=>draw(e.target.value)}
-document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>render(b.dataset.v));
-$("add").onclick=()=>{$("modal").classList.add("show");$("due").value=today();$("title").focus()};
-$("cancel").onclick=()=>$("modal").classList.remove("show");
-$("save").onclick=()=>{let t=$("title").value.trim();if(!t){alert("請先輸入工作事項");return}data.push({id:Date.now(),title:t,due:$("due").value,time:$("time").value,status:$("status").value,cat:$("cat").value,customer:$("customer").value.trim(),done:false});store();$("modal").classList.remove("show");$("title").value="";$("customer").value="";$("time").value="";render("today")};
-$("clear").onclick=()=>{data=data.filter(x=>!x.done);store();render("done")};render();
-</script>
+<div id="v5">
+  <div class="capture">
+    <div style="font-weight:800;font-size:18px;margin-bottom:8px">🧠 有事情直接打在這裡</div>
+    <textarea id="input" placeholder="例如：王力宏明天要開當沖"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn primary" id="add">＋加入</button>
+      <button class="btn light" id="clear">清除</button>
+    </div>
+    <div id="msg" class="meta"></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-view="day">📅 當天必做</button>
+    <button class="tab" data-view="tomorrow">🔔 明日必做</button>
+    <button class="tab" data-view="week">🗓️ 本週行事曆</button>
+    <button class="tab" data-view="waiting">⏳ 等待事項</button>
+    <button class="tab" data-view="customers">⭐ 客戶重點</button>
+    <button class="tab" data-view="done">✅ 已完成</button>
+  </div>
+  <input id="search" class="search" placeholder="🔎 搜尋客戶、事項、內容、分類……">
+  <div id="content"></div>
+
+  <div id="modal" class="modal"><div class="modalbox">
+    <h3 style="margin-top:0">✏️ 編輯這筆事項</h3>
+    <input type="hidden" id="eid">
+    <div class="field"><label>客戶</label><input id="ec"></div>
+    <div class="field"><label>事項</label><input id="es"></div>
+    <div class="field"><label>內容／備註</label><textarea id="ed"></textarea></div>
+    <div class="field"><label>分類</label><select id="ek"></select></div>
+    <div class="field"><label>狀態</label><select id="est"><option>待處理</option><option>等待</option><option>已完成</option></select></div>
+    <div class="field"><label>日期</label><input type="date" id="edate"></div>
+    <div class="field"><label>時間</label><input type="time" id="etime"></div>
+    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn primary" id="saveEdit">儲存</button><button class="btn light" id="cancelEdit">取消</button></div>
+  </div></div>
+</div>
 <script>
 (function(){
-const KEY='micky_work_center_v4';
+const KEY='micky_work_center_v5';
 const cats=['開戶','當沖','授信','下單','手續費','缺款','臨櫃','其他'];
-const $=s=>document.querySelector(s);
+const $=id=>document.getElementById(id);
+cats.forEach(c=>{let o=document.createElement('option');o.textContent=c;$('ek').appendChild(o)});
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return[]}}
 function save(a){localStorage.setItem(KEY,JSON.stringify(a))}
-function iso(d){return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10)}
-function tomorrow(){let d=new Date();d.setDate(d.getDate()+1);return iso(d)}
-function weekRange(){let d=new Date(), day=d.getDay(), diff=day===0?-6:1-day;let mon=new Date(d);mon.setDate(d.getDate()+diff);let sun=new Date(mon);sun.setDate(mon.getDate()+6);return [iso(mon),iso(sun)]}
-function parseNatural(raw){
-  let s=raw.trim(), customer='', date='', time='', status='待處理', category='其他';
-  let m=s.match(/^([^，。,、\s]+?)(?:說|表示|要|希望|請|那個)/); if(m) customer=m[1];
-  const dateMatch=s.match(/(今天|今日|明天|明日|下週[一二三四五六日天]?)/);
-  if(dateMatch){
-    const w=dateMatch[1];
-    if(w.includes('今天')||w.includes('今日')) date=iso(new Date());
-    else if(w.includes('明')) date=tomorrow();
-    else status='等待';
-  }
-  const tm=s.match(/(?:上午|下午|早上|晚上)?\s*(\d{1,2})(?::|點|時)(\d{1,2})?/);
-  if(tm){let h=+tm[1], min=+(tm[2]||0); if(/下午|晚上/.test(s)&&h<12)h+=12; time=String(h).padStart(2,'0')+':'+String(min).padStart(2,'0')}
-  for(const c of cats) if(s.includes(c)){category=c;break}
-  if(/等待|等候|預計.*出來|下週.*出來/.test(s)) status='等待';
-  let subject=s;
-  if(customer) subject=subject.replace(customer,'').trim();
-  subject=subject.replace(/^(說|表示|要|希望|請)\s*/,'').trim();
-  if(subject.includes('明天')) subject=subject.replace(/明天/,'').trim();
-  if(subject.includes('明日')) subject=subject.replace(/明日/,'').trim();
-  subject=subject.replace(/^(上午|下午|早上|晚上)?\s*\d{1,2}(?::|點|時)\d{1,2}?/,'').trim();
-  if(!subject)subject=s;
-  if(category!=='其他' && /開當沖|申請當沖/.test(s)) subject='開當沖';
-  let detail='';
-  const dm=s.match(/(?:內容是|內容為|關注|備註)[：:\s]*(.+)$/); if(dm)detail=dm[1].trim();
-  return {id:Date.now()+Math.random(),customer,subject,detail,category,status,date,time,history:[{at:new Date().toLocaleString('zh-TW'),text:'建立：'+raw}]};
+function day(d){return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10)}
+function today(){return day(new Date())}
+function tomorrow(){let d=new Date();d.setDate(d.getDate()+1);return day(d)}
+function week(){let d=new Date(), n=d.getDay(), diff=n===0?-6:1-n, m=new Date(d);m.setDate(d.getDate()+diff);let s=new Date(m);s.setDate(m.getDate()+6);return[day(m),day(s)]}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function parse(raw){
+ let s=raw.trim(),customer='',date='',time='',status='待處理',category='其他';
+ let m=s.match(/^([^，。,、\s]+?)(?:說|表示|要|希望|請|那個)/);if(m)customer=m[1];
+ let dm=s.match(/(今天|今日|明天|明日)/);if(dm)date=(/明/.test(dm[1])?tomorrow():today());
+ let tm=s.match(/(上午|下午|早上|晚上)?\s*(\d{1,2})(?:[：:點時](\d{1,2})?)?/);
+ if(tm){let h=+tm[2],mi=+(tm[3]||0);if(/下午|晚上/.test(tm[1]||'')&&h<12)h+=12;time=String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0')}
+ cats.forEach(c=>{if(s.includes(c))category=c});
+ if(/等待|等候|預計.*出來|下週.*出來|下週.*追/.test(s))status='等待';
+ let subject=s;
+ if(customer)subject=subject.replace(customer,'').trim();
+ subject=subject.replace(/^(說|表示|要|希望|請)\s*/,'').trim();
+ subject=subject.replace(/(?:今天|今日|明天|明日)/g,'').trim();
+ if(category==='當沖' && /開當沖|申請當沖/.test(s))subject='開當沖';
+ let detail=(s.match(/(?:內容是|內容為|關注|備註)[：:\s]*(.+)$/)||[])[1]||'';
+ return {id:Date.now()+Math.random(),customer,subject:subject||s,detail:detail.trim(),category,status,date,time,history:[{at:new Date().toLocaleString('zh-TW'),text:'建立：'+raw}]};
 }
-function mergeExisting(x){
-  const arr=load();
-  const idx=arr.findIndex(t=>x.customer && t.customer===x.customer && (
-    (x.subject&&t.subject&&t.subject.includes(x.subject.replace('開',''))) ||
-    (x.subject&&t.subject&&x.subject.includes(t.subject.replace('開',''))) ||
-    (x.detail&&t.detail&&t.detail.includes(x.detail))
-  ));
-  if(idx>=0){
-    const t=arr[idx];
-    const old={...t};
-    if(x.status==='等待')t.status='等待';
-    if(x.date)t.date=x.date;
-    if(x.time)t.time=x.time;
-    if(x.category!=='其他')t.category=x.category;
-    if(x.subject)t.subject=x.subject;
-    if(x.detail)t.detail=x.detail;
-    t.history=t.history||[];
-    t.history.push({at:new Date().toLocaleString('zh-TW'),text:'更新：'+x.history[0].text});
-    arr[idx]=t;save(arr);return t;
-  }
-  arr.unshift(x);save(arr);return x;
+function same(a,b){
+ if(!a.customer||!b.customer||a.customer!==b.customer)return false;
+ const A=(a.subject||'').replace(/開|申請|追一下|追蹤|進度/g,'');
+ const B=(b.subject||'').replace(/開|申請|追一下|追蹤|進度/g,'');
+ return (A&&B&&(A.includes(B)||B.includes(A))) || (a.detail&&b.detail&&a.detail===b.detail);
 }
-function isWeek(date){if(!date)return false;let [a,b]=weekRange();return date>=a&&date<=b}
-function itemHTML(t){
-  return `<div class="v4-item">
-    <div><b>${esc(t.customer||'未指定客戶')}</b>｜${esc(t.subject)}</div>
-    ${t.detail?`<div class="v4-meta">內容：${esc(t.detail)}</div>`:''}
-    <div class="v4-meta">${esc(t.category)} · ${esc(t.status)}${t.date?' · '+t.date:''}${t.time?' '+t.time:''}</div>
-    ${t.history?.length?`<div class="v4-history">最新：${esc(t.history[t.history.length-1].text)}</div>`:''}
-    <div class="v4-actions">
-      <button onclick="v4edit('${t.id}')">✏️ 編輯</button>
-      <button onclick="v4complete('${t.id}')">✅ 完成</button>
-      <button onclick="v4delete('${t.id}')">🗑️ 刪除</button>
-    </div>
-  </div>`;
+function addOrUpdate(x){
+ let a=load(),i=a.findIndex(t=>same(t,x));
+ if(i>=0){
+   let t=a[i]; if(x.subject)t.subject=x.subject;if(x.detail)t.detail=x.detail;if(x.category!=='其他')t.category=x.category;
+   if(x.date)t.date=x.date;if(x.time)t.time=x.time;if(x.status!=='待處理')t.status=x.status;
+   t.history=t.history||[];t.history.push({at:new Date().toLocaleString('zh-TW'),text:'更新：'+x.history[0].text});a[i]=t;save(a);return{t,updated:true}
+ }
+ a.unshift(x);save(a);return{t:x,updated:false}
 }
-function esc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+let view='day';
+function matches(t,q){if(!q)return true;return [t.customer,t.subject,t.detail,t.category,t.status,t.date,t.time].join(' ').toLowerCase().includes(q.toLowerCase())}
+function item(t){
+ return `<div class="item"><div><b>${esc(t.customer||'未指定客戶')}</b>｜${esc(t.subject)} <span class="badge">${esc(t.category)}</span></div>
+ ${t.detail?`<div class="meta">內容：${esc(t.detail)}</div>`:''}
+ <div class="meta">${esc(t.status)}${t.date?' · '+t.date:''}${t.time?' '+t.time:''}</div>
+ <div class="actions"><button onclick="edit('${t.id}')">✏️ 編輯</button><button onclick="complete('${t.id}')">✅ 完成</button><button onclick="del('${t.id}')">🗑️ 刪除</button></div></div>`;
+}
 function render(){
-  const arr=load().filter(t=>t.status!=='已完成');
-  const done=load().filter(t=>t.status==='已完成');
-  const tod=iso(new Date()), tom=tomorrow(), [ws,we]=weekRange();
-  const important=[...new Map(arr.filter(t=>t.customer).map(t=>[t.customer,t])).values()];
-  const groups=[
-    ['📅 當天必做',arr.filter(t=>t.date===tod)],
-    ['🔔 明日必做',arr.filter(t=>t.date===tom)],
-    ['⏳ 等待事項',arr.filter(t=>t.status==='等待')],
-    ['🗓️ 本週行事曆',arr.filter(t=>isWeek(t.date))],
-    ['⭐ 客戶重點',important],
-    ['✅ 已完成',done]
-  ];
-  $('#v4content').innerHTML=groups.map(g=>`<section class="v4-section"><h3>${g[0]}</h3>${g[1].length?g[1].map(itemHTML).join(''):'<div class="v4-empty">目前沒有事項</div>'}</section>`).join('');
+ let a=load(),q=$('search').value.trim(),t=today(),tm=tomorrow(),[w1,w2]=week();
+ a=a.filter(x=>matches(x,q));
+ let title='',items=[];
+ if(view==='day'){title='📅 當天必做';items=a.filter(x=>x.status!=='已完成'&&x.date===t)}
+ if(view==='tomorrow'){title='🔔 明日必做';items=a.filter(x=>x.status!=='已完成'&&x.date===tm)}
+ if(view==='week'){title='🗓️ 本週行事曆';items=a.filter(x=>x.status!=='已完成'&&x.date>=w1&&x.date<=w2)}
+ if(view==='waiting'){title='⏳ 等待事項';items=a.filter(x=>x.status==='等待')}
+ if(view==='customers'){
+   title='⭐ 客戶重點';
+   const map={};a.filter(x=>x.customer).forEach(x=>{(map[x.customer]??=[]).push(x)});
+   $('content').innerHTML='<section class="section"><h3>'+title+'</h3>'+Object.keys(map).map(c=>`<div class="item"><b>${esc(c)}</b>${map[c].map(item).join('')}</div>`).join('')||'<div class="empty">目前沒有客戶重點</div>'+'</section>';return;
+ }
+ if(view==='done'){title='✅ 已完成';items=a.filter(x=>x.status==='已完成')}
+ $('content').innerHTML=`<section class="section"><h3>${title}</h3>${items.length?items.map(item).join(''):'<div class="empty">目前沒有事項</div>'}</section>`;
 }
-window.v4edit=function(id){
-  const t=load().find(x=>String(x.id)===String(id));if(!t)return;
-  $('#v4modal').classList.add('open');
-  $('#eId').value=t.id;$('#eCustomer').value=t.customer||'';$('#eSubject').value=t.subject||'';
-  $('#eDetail').value=t.detail||'';$('#eCategory').value=t.category||'其他';$('#eStatus').value=t.status||'待處理';
-  $('#eDate').value=t.date||'';$('#eTime').value=t.time||'';
-};
-window.v4delete=function(id){if(!confirm('確定刪除這筆事項？'))return;save(load().filter(x=>String(x.id)!==String(id)));render()}
-window.v4complete=function(id){let a=load(),t=a.find(x=>String(x.id)===String(id));if(!t)return;t.status='已完成';t.history=t.history||[];t.history.push({at:new Date().toLocaleString('zh-TW'),text:'標記完成'});save(a);render()}
-function build(){
-  const root=document.createElement('div');root.id='v4';
-  root.innerHTML=`
-  <div class="v4-card">
-    <div class="v4-title">🧠 有事情直接打進來</div>
-    <textarea id="v4input" class="v4-input" placeholder="例如：王力宏明天要開當沖"></textarea>
-    <div style="display:flex;gap:8px;margin-top:8px">
-      <button id="v4add" class="v4-btn v4-primary">＋直接加入</button>
-      <button id="v4clear" class="v4-btn v4-light">清除</button>
-    </div>
-    <div id="v4notice" class="v4-meta"></div>
-  </div>
-  <div class="v4-tabs">
-    <button class="v4-tab active" onclick="v4scroll('day')">📅 當天必做</button>
-    <button class="v4-tab" onclick="v4scroll('tom')">🔔 明日必做</button>
-    <button class="v4-tab" onclick="v4scroll('week')">🗓️ 本週行事曆</button>
-    <button class="v4-tab" onclick="v4scroll('wait')">⏳ 等待事項</button>
-    <button class="v4-tab" onclick="v4scroll('cust')">⭐ 客戶重點</button>
-    <button class="v4-tab" onclick="v4scroll('done')">✅ 已完成</button>
-  </div>
-  <div id="v4content"></div>
-  <div id="v4modal" class="v4-modal"><div class="v4-modal-box">
-    <div class="v4-title">✏️ 編輯事項</div>
-    <input type="hidden" id="eId">
-    <div class="v4-field"><label>客戶</label><input id="eCustomer"></div>
-    <div class="v4-field"><label>事項</label><input id="eSubject"></div>
-    <div class="v4-field"><label>內容／備註</label><textarea id="eDetail"></textarea></div>
-    <div class="v4-grid">
-      <div class="v4-field"><label>分類</label><select id="eCategory">${cats.map(c=>`<option>${c}</option>`).join('')}</select></div>
-      <div class="v4-field"><label>狀態</label><select id="eStatus"><option>待處理</option><option>等待</option><option>已完成</option></select></div>
-      <div class="v4-field"><label>日期</label><input type="date" id="eDate"></div>
-      <div class="v4-field"><label>時間</label><input type="time" id="eTime"></div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:10px"><button id="eSave" class="v4-btn v4-primary">儲存修改</button><button id="eCancel" class="v4-btn v4-light">取消</button></div>
-  </div></div>`;
-  document.body.prepend(root);
-  $('#v4add').onclick=()=>{
-    const raw=$('#v4input').value.trim();if(!raw)return;
-    const x=parseNatural(raw), t=mergeExisting(x);
-    $('#v4notice').textContent=`已整理：${t.customer||'未指定客戶'}｜${t.subject} · ${t.category} · ${t.status}${t.date?' · '+t.date:''}`;
-    $('#v4input').value='';render();
-  };
-  $('#v4clear').onclick=()=>{$('#v4input').value='';$('#v4notice').textContent=''};
-  $('#eCancel').onclick=()=>$('#v4modal').classList.remove('open');
-  $('#eSave').onclick=()=>{
-    let a=load(),t=a.find(x=>String(x.id)===$('#eId').value);if(!t)return;
-    t.customer=$('#eCustomer').value.trim();t.subject=$('#eSubject').value.trim();t.detail=$('#eDetail').value.trim();
-    t.category=$('#eCategory').value;t.status=$('#eStatus').value;t.date=$('#eDate').value;t.time=$('#eTime').value;
-    t.history=t.history||[];t.history.push({at:new Date().toLocaleString('zh-TW'),text:'手動編輯'});
-    save(a);$('#v4modal').classList.remove('open');render();
-  };
-  render();
-}
-window.v4scroll=function(type){const map={day:'📅 當天必做',tom:'🔔 明日必做',week:'🗓️ 本週行事曆',wait:'⏳ 等待事項',cust:'⭐ 客戶重點',done:'✅ 已完成'};const hs=[...document.querySelectorAll('.v4-section h3')];const h=hs.find(x=>x.textContent===map[type]);if(h)h.scrollIntoView({behavior:'smooth',block:'start'})}
-build();
+window.edit=function(id){let t=load().find(x=>String(x.id)===String(id));if(!t)return;$('eid').value=t.id;$('ec').value=t.customer||'';$('es').value=t.subject||'';$('ed').value=t.detail||'';$('ek').value=t.category||'其他';$('est').value=t.status||'待處理';$('edate').value=t.date||'';$('etime').value=t.time||'';$('modal').classList.add('open')};
+window.del=function(id){if(confirm('確定刪除？')){save(load().filter(x=>String(x.id)!==String(id)));render()}};
+window.complete=function(id){let a=load(),t=a.find(x=>String(x.id)===String(id));if(t){t.status='已完成';t.history=t.history||[];t.history.push({at:new Date().toLocaleString('zh-TW'),text:'標記完成'});save(a);render()}};
+$('add').onclick=function(){let raw=$('input').value.trim();if(!raw)return;let x=parse(raw),r=addOrUpdate(x);$('msg').textContent=(r.updated?'已更新原本事項：':'已加入並自動分類：')+(r.t.customer||'未指定客戶')+'｜'+r.t.subject;$('input').value='';render()};
+$('clear').onclick=function(){$('input').value='';$('msg').textContent=''};
+$('search').oninput=render;
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');view=b.dataset.view;render()});
+$('cancelEdit').onclick=()=>$('modal').classList.remove('open');
+$('saveEdit').onclick=function(){let a=load(),t=a.find(x=>String(x.id)===$('eid').value);if(!t)return;t.customer=$('ec').value.trim();t.subject=$('es').value.trim();t.detail=$('ed').value.trim();t.category=$('ek').value;t.status=$('est').value;t.date=$('edate').value;t.time=$('etime').value;t.history=t.history||[];t.history.push({at:new Date().toLocaleString('zh-TW'),text:'手動編輯'});save(a);$('modal').classList.remove('open');render()};
+render();
 })();
 </script>
-</body></html>
