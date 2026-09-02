@@ -142,6 +142,15 @@ button.danger{
 }
 </style>
 
+
+<style id="pagination-style">
+.pagination{display:flex;align-items:center;justify-content:center;gap:8px;margin:12px 0 6px}
+.pagination button{min-width:40px;padding:9px 12px;border:2px solid var(--border,#dbc9e8);background:#fff8ff;color:#73509e;font-weight:700}
+.pagination button.current{background:#9b72cf;color:#fff;border-color:#73509e;box-shadow:2px 2px 0 #73509e}
+.pagination button:disabled{opacity:.4}
+.pagination .page-info{font-size:13px;color:#81748b;min-width:72px;text-align:center}
+</style>
+
 </head>
 <style>
 *{box-sizing:border-box}
@@ -211,6 +220,7 @@ textarea,input,select{font:inherit}
   </div>
   <div style="font-size:13px;color:#666;margin-top:4px">🔎 這裡可以直接搜尋「客戶姓名、帳號、事項、內容、分類」</div><input id="search" class="search" placeholder="例如：王力宏、12345678、GOWIN、累積量……">
   <div id="content"></div>
+  <div id="pagination" class="pagination" style="display:none"></div>
 
   <div class="card" id="categoryShortcuts" style="margin-top:14px">
     <div style="font-size:15px;font-weight:700;margin-bottom:9px">📂 各項歸類</div>
@@ -463,6 +473,8 @@ function addOrUpdate(x){
 
 let view='day';
 let categoryFilter='';
+let currentPage=1;
+const PAGE_SIZE=5;
 function matches(t,q){
  if(!q)return true;
  return [t.customer,t.account,t.subject,t.detail,t.category,t.status,t.date,t.time,t.raw].join(' ').toLowerCase().includes(q.toLowerCase())
@@ -498,25 +510,75 @@ function render(){
  let a=load(),q=$('search').value.trim(),t=today(),tm=tomorrow(),[w1,w2]=week();
  a=a.filter(x=>matches(x,q));
  let title='',items=[];
+
  if(categoryFilter){
    title='📂 '+categoryFilter;
    items=a.filter(x=>x.category===categoryFilter);
- }else if(view==='day'){title='📅 當天必做';items=a.filter(x=>x.status!=='已完成'&&x.date===t)}
- else if(view==='tomorrow'){title='🔔 明日必做';items=a.filter(x=>x.status!=='已完成'&&x.date===tm)}
- else if(view==='week'){title='🗓️ 行事曆';items=a.filter(x=>x.status!=='已完成'&&x.date>=w1&&x.date<=w2)}
- else if(view==='waiting'){title='⏳ 等待中';items=a.filter(x=>x.status==='等待')}
- else if(view==='customers'){
+ }else if(view==='day'){
+   title='📅 當天必做';
+   items=a.filter(x=>x.status!=='已完成'&&x.date===t);
+ }else if(view==='tomorrow'){
+   title='🔔 明日必做';
+   items=a.filter(x=>x.status!=='已完成'&&x.date===tm);
+ }else if(view==='week'){
+   title='🗓️ 行事曆';
+   // 行事曆不再只限制本週：所有有日期的未完成事項都能往後查看。
+   items=a.filter(x=>x.status!=='已完成'&&x.date).sort((x,y)=>(x.date||'').localeCompare(y.date||''));
+ }else if(view==='waiting'){
+   title='⏳ 等待中';
+   items=a.filter(x=>x.status==='等待');
+ }else if(view==='overdue'){
+   title='⚠️ 逾期未完成';
+   items=a.filter(x=>x.status!=='已完成'&&x.date&&x.date<t).sort((x,y)=>(x.date||'').localeCompare(y.date||''));
+ }else if(view==='customers'){
    title='⭐ 客戶重點';
    const map={};
    a.forEach(x=>{const key=x.customer||'未指定客戶';(map[key]??=[]).push(x)});
-   const body=Object.keys(map).length
-     ?Object.keys(map).map(c=>`<div class="item"><b>${esc(c)}</b>${map[c].map(item).join('')}</div>`).join('')
+   const groups=Object.keys(map).map(c=>({customer:c,tasks:map[c]}));
+   const totalPages=Math.max(1,Math.ceil(groups.length/PAGE_SIZE));
+   if(currentPage>totalPages)currentPage=totalPages;
+   const pageGroups=groups.slice((currentPage-1)*PAGE_SIZE,currentPage*PAGE_SIZE);
+   const body=pageGroups.length
+     ?pageGroups.map(g=>`<div class="item"><b>${esc(g.customer)}</b>${g.tasks.map(item).join('')}</div>`).join('')
      :'<div class="empty">目前沒有客戶重點</div>';
-   $('content').innerHTML=`<section class="section"><h3>${title}</h3>${body}</section>`;return;
+   $('content').innerHTML=`<section class="section"><h3>${title}</h3>${body}</section>`;
+   renderPagination(groups.length);
+   return;
+ }else if(view==='done'){
+   title='✅ 已完成';
+   items=a.filter(x=>x.status==='已完成');
  }
- else if(view==='done'){title='✅ 已完成';items=a.filter(x=>x.status==='已完成')}
- $('content').innerHTML=`<section class="section"><h3>${title}</h3>${items.length?items.map(item).join(''):'<div class="empty">目前沒有事項</div>'}</section>`;
+
+ const total=items.length;
+ const totalPages=Math.max(1,Math.ceil(total/PAGE_SIZE));
+ if(currentPage>totalPages)currentPage=totalPages;
+ const pageItems=items.slice((currentPage-1)*PAGE_SIZE,currentPage*PAGE_SIZE);
+
+ $('content').innerHTML=`<section class="section"><h3>${title}</h3>${pageItems.length?pageItems.map(item).join(''):'<div class="empty">目前沒有事項</div>'}</section>`;
+ renderPagination(total);
 }
+
+function renderPagination(total){
+ const box=$('pagination');
+ const totalPages=Math.max(1,Math.ceil(total/PAGE_SIZE));
+ if(total<=PAGE_SIZE){
+   box.style.display='none';
+   box.innerHTML='';
+   return;
+ }
+ box.style.display='flex';
+ box.innerHTML=`
+   <button ${currentPage<=1?'disabled':''} onclick="changePage(${currentPage-1})">‹</button>
+   <span class="page-info">${currentPage} / ${totalPages} 頁</span>
+   <button ${currentPage>=totalPages?'disabled':''} onclick="changePage(${currentPage+1})">›</button>
+ `;
+}
+window.changePage=function(page){
+ const p=Math.max(1,Number(page)||1);
+ currentPage=p;
+ render();
+ window.scrollTo({top:document.getElementById('content').offsetTop-12,behavior:'smooth'});
+};
 
 window.edit=function(id){
  let t=load().find(x=>String(x.id)===String(id));if(!t)return;
@@ -547,18 +609,18 @@ $('add').onclick=function(){
  $('input').value='';render();
 };
 $('clear').onclick=()=>{$('input').value='';$('msg').textContent=''};
-$('search').oninput=render;
+$('search').oninput=()=>{currentPage=1;render();};
 
 document.querySelectorAll('#categoryShortcuts button').forEach(b=>b.onclick=()=>{
   const selected=b.dataset.category||'';
-  categoryFilter=(categoryFilter===selected?'':selected);
+  categoryFilter=(categoryFilter===selected?'':selected);currentPage=1;
   document.querySelectorAll('#categoryShortcuts button').forEach(x=>x.classList.toggle('active',x===b&&categoryFilter===selected));
   render();
 });
 
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
- b.classList.add('active');view=b.dataset.view;
+ b.classList.add('active');view=b.dataset.view;currentPage=1;
  categoryFilter='';
  document.querySelectorAll('#categoryShortcuts button').forEach(x=>x.classList.remove('active'));
  render();
