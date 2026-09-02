@@ -1,0 +1,60 @@
+<!doctype html><html lang="zh-Hant"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Micky 工作中心</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f6f8;color:#202124;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans TC",sans-serif}
+.app{max-width:720px;margin:auto;padding:18px 16px 90px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+h1{font-size:25px;margin:0}.date,.muted{color:#777;font-size:13px}.add{width:100%;padding:14px;border-radius:14px;background:#202124;color:white;font-weight:700;margin-bottom:14px;border:0}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:14px}.tabs button,.small{padding:10px 5px;border-radius:12px;background:white;border:1px solid #e4e5e7;font-size:13px}
+.tabs button.active{background:#202124;color:white}.card{background:white;border:1px solid #e4e5e7;border-radius:17px;padding:16px;margin-bottom:12px}
+.card h2{font-size:17px;margin:0 0 4px}.task{display:flex;gap:11px;padding:13px 0;border-bottom:1px solid #eee}.task:last-child{border-bottom:0}
+.check{width:22px;height:22px;border:2px solid #aaa;border-radius:6px;background:white;flex:0 0 auto}.check.done{background:#202124;color:white;border-color:#202124}.check.done:after{content:"✓";font-size:14px}
+.task.done .title{text-decoration:line-through;color:#999}.title{font-weight:650}.meta{font-size:12px;color:#777;margin-top:4px}
+.tag{display:inline-block;padding:3px 7px;border:1px solid #ddd;border-radius:99px;font-size:11px;margin:6px 5px 0 0}
+input,select{width:100%;padding:12px;border:1px solid #ddd;border-radius:11px;background:white;font-size:16px}.row{display:flex;gap:8px}.row>*{flex:1}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.38);display:none;align-items:flex-end;justify-content:center}.modal.show{display:flex}
+.sheet{background:white;width:min(720px,100%);border-radius:22px 22px 0 0;padding:18px}.sheet h2{margin:0 0 14px}.field{margin:10px 0}.field label{display:block;font-size:13px;color:#666;margin-bottom:5px}
+.save{width:100%;padding:13px;border-radius:12px;background:#202124;color:white;font-weight:700;margin-top:8px;border:0}.empty{text-align:center;color:#999;padding:25px 0}
+.customer{padding:13px 0;border-bottom:1px solid #eee}.customer:last-child{border-bottom:0}.small{cursor:pointer}
+@media(min-width:650px){.modal{align-items:center}.sheet{border-radius:20px;max-width:560px}}
+</style></head><body>
+<div class="app"><div class="top"><div><h1>我的工作</h1><div class="date" id="date"></div></div><button class="small" id="clear">清除已完成</button></div>
+<button class="add" id="add">＋ 快速新增</button>
+<div class="tabs"><button class="active" data-v="today">📅 當天必做</button><button data-v="waiting">⏳ 等待事項</button><button data-v="customers">⭐ 客戶重點</button><button data-v="done">✅ 已完成</button></div>
+<div id="content"></div></div>
+<div class="modal" id="modal"><div class="sheet"><h2>新增工作事項</h2>
+<div class="field"><label>我要做什麼？</label><input id="title" placeholder="例如：聯絡王先生"></div>
+<div class="field"><label>日期</label><input id="due" type="date"></div><div class="field"><label>時間（可不填）</label><input id="time" type="time"></div>
+<div class="row"><div class="field"><label>狀態</label><select id="status"><option value="today">當天必做</option><option value="waiting">等待事項</option></select></div>
+<div class="field"><label>工作分類</label><select id="cat"><option>開戶</option><option>當沖</option><option>授信</option><option>下單</option><option>手續費</option><option>缺款</option><option>臨櫃</option><option>其他</option></select></div></div>
+<div class="field"><label>客戶（可不填）</label><input id="customer" placeholder="姓名或帳號"></div>
+<button class="save" id="save">加入工作</button><button class="small" style="width:100%;margin-top:8px" id="cancel">取消</button></div></div>
+<script>
+const K="micky_work_center_v1";
+let data=JSON.parse(localStorage.getItem(K)||"null")||[
+{id:1,title:"聯絡王先生",due:"2026-09-02",time:"14:10",status:"today",cat:"客戶",customer:"王先生",done:false},
+{id:2,title:"通知今日缺款客戶",due:"2026-09-02",time:"",status:"today",cat:"缺款",customer:"",done:false},
+{id:3,title:"陳小姐手續費申請",due:"2026-09-02",time:"",status:"today",cat:"手續費",customer:"陳小姐",done:false},
+{id:4,title:"確認王先生授信需求",due:"",time:"",status:"waiting",cat:"授信",customer:"王先生",done:false}];
+const $=x=>document.getElementById(x), today=()=>new Date().toISOString().slice(0,10);
+function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function store(){localStorage.setItem(K,JSON.stringify(data))}
+$("date").textContent=new Date().toLocaleDateString("zh-TW",{year:"numeric",month:"numeric",day:"numeric",weekday:"short"});
+function render(v="today"){
+document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("active",b.dataset.v===v));
+if(v==="customers"){renderCustomers();return}
+let list=v==="done"?data.filter(x=>x.done):data.filter(x=>!x.done&&x.status===v&&(v==="waiting"||!x.due||x.due===today()));
+$("content").innerHTML='<div class="card"><h2>'+({today:"今天真正要做的事",waiting:"等待／之後要追蹤",done:"已完成"}[v])+'</h2><div class="muted">'+(v==="today"?"只放今天必須處理的事項":v==="waiting"?"已記下來，但目前不用佔用今天注意力":"保留工作歷史")+'</div><div id="list"></div></div>';
+let box=$("list");if(!list.length){box.innerHTML='<div class="empty">目前沒有事項</div>';return}
+list.sort((a,b)=>(a.time||"99:99").localeCompare(b.time||"99:99")).forEach(x=>{let e=document.createElement("div");e.className="task"+(x.done?" done":"");
+e.innerHTML='<button class="check '+(x.done?"done":"")+'"></button><div style="flex:1"><div class="title">'+esc(x.title)+'</div><div class="meta">'+(x.due||"")+'　'+(x.time||"")+(x.customer?"　·　"+esc(x.customer):"")+'</div><span class="tag">'+esc(x.cat)+'</span></div>';
+e.querySelector(".check").onclick=()=>{x.done=!x.done;store();render(v)};box.appendChild(e)})}
+function renderCustomers(){ $("content").innerHTML='<div class="card"><h2>⭐ 客戶重點</h2><div class="muted">搜尋姓名／帳號，查看這個客戶的工作紀錄</div><input id="q" placeholder="搜尋姓名或帳號"><div id="cl"></div></div>';
+function draw(q=""){let g={};data.filter(x=>x.customer&&x.customer.toLowerCase().includes(q.toLowerCase())).forEach(x=>(g[x.customer]??=[]).push(x));$("cl").innerHTML=Object.entries(g).map(([n,a])=>'<div class="customer"><b>⭐ '+esc(n)+'</b>'+a.map(x=>'<div style="font-size:13px;margin-top:6px">'+(x.done?"✓":"□")+' '+esc(x.title)+' <span class="muted">｜'+esc(x.cat)+'</span></div>').join("")+'</div>').join("")||'<div class="empty">找不到客戶</div>'}
+draw();$("q").oninput=e=>draw(e.target.value)}
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>render(b.dataset.v));
+$("add").onclick=()=>{$("modal").classList.add("show");$("due").value=today();$("title").focus()};
+$("cancel").onclick=()=>$("modal").classList.remove("show");
+$("save").onclick=()=>{let t=$("title").value.trim();if(!t){alert("請先輸入工作事項");return}data.push({id:Date.now(),title:t,due:$("due").value,time:$("time").value,status:$("status").value,cat:$("cat").value,customer:$("customer").value.trim(),done:false});store();$("modal").classList.remove("show");$("title").value="";$("customer").value="";$("time").value="";render("today")};
+$("clear").onclick=()=>{data=data.filter(x=>!x.done);store();render("done")};render();
+</script></body></html>
