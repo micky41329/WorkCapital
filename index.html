@@ -202,7 +202,7 @@ textarea,input,select{font:inherit}
   <!-- 工作事項：自然語言自動分類 -->
   <div class="card capture">
     <div class="title">🧠 有工作事項直接打在這裡</div>
-    <textarea id="input" placeholder="例如：王力宏明天要開當沖"></textarea>
+    <textarea id="input" placeholder="例如：ken 明天要來開當沖"></textarea>
     <div style="display:flex;gap:8px;margin-top:8px">
       <button class="btn primary" id="add">＋加入</button>
       <button class="btn light" id="clear">清除</button>
@@ -385,12 +385,32 @@ function parse(raw){
  if(md)date=makeDate(now.getFullYear(),+md[1],+md[2]);
 
  // ===== 5. 時間 =====
- let tm=original.match(/(上午|下午|早上|晚上)?\s*(\d{1,2})(?:[：:點時](\d{1,2})?)?/);
- if(tm && (tm[1] || /[:：點時]/.test(tm[0]))){
+ // 支援：早上十點／下午一點／上午九點／9點／18:30
+ function cnHour(v){
+   if(!v)return null;
+   if(/^\d{1,2}$/.test(v))return +v;
+   const map={'零':0,'〇':0,'一':1,'二':2,'兩':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'十一':11,'十二':12};
+   if(map[v]!=null)return map[v];
+   if(/^十[一二三四五六七八九]$/.test(v))return 10+map[v[1]];
+   if(/^[一二三四五六七八九]十$/.test(v))return map[v[0]]*10;
+   if(/^[一二三四五六七八九]十[一二三四五六七八九]$/.test(v))return map[v[0]]*10+map[v[2]];
+   return null;
+ }
+ let tm = original.match(/(?:^|[^\d])(?:(上午|下午|早上|晚上)\s*)?(\d{1,2})(?:\s*[：:]\s*(\d{1,2}))?(?=\s*(?:點|時|分|$|[，,。；;、]))/);
+ let tmCn = original.match(/(上午|下午|早上|晚上)\s*([零〇一二兩三四五六七八九十]{1,3})\s*(?:點|時)(?:\s*(\d{1,2})\s*分)?/);
+ if(tmCn){
+   let h=cnHour(tmCn[2]),mi=+(tmCn[3]||0);
+   if(h!=null){
+     if(/下午|晚上/.test(tmCn[1])&&h<12)h+=12;
+     time=String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0');
+   }
+ }else if(tm){
    let h=+tm[2],mi=+(tm[3]||0);
    if(/下午|晚上/.test(tm[1]||'')&&h<12)h+=12;
-   time=String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0');
+   if(h>=0&&h<=23&&mi>=0&&mi<=59)
+     time=String(h).padStart(2,'0')+':'+String(mi).padStart(2,'0');
  }
+
 
  // ===== 6. 分類 =====
  if(/申請手續費|手續費|折數|[0-9]+(?:\.[0-9]+)?折/.test(original))
@@ -424,7 +444,8 @@ function parse(raw){
    .replace(/下個月\s*\d{1,2}\s*(?:日|號)/g,'')
    .replace(/\d{1,2}\s*[\/\-]\s*\d{1,2}/g,'')
    .replace(/\d{1,2}\s*月\s*\d{1,2}\s*(?:日|號)/g,'')
-   .replace(/(?:上午|下午|早上|晚上)?\s*\d{1,2}(?:[：:點時]\d{1,2})?/,'')
+   .replace(/(?:上午|下午|早上|晚上)\s*[零〇一二兩三四五六七八九十]{1,3}\s*(?:點|時)(?:\s*\d{1,2}\s*分)?/g,'')
+   .replace(/(?:上午|下午|早上|晚上)?\s*\d{1,2}(?:\s*[：:]\s*\d{1,2}|\s*[點時](?:\s*\d{1,2}\s*分)?)?/g,'')
    .replace(/\s+/g,' ')
    .trim();
 
