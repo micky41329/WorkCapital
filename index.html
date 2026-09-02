@@ -19,27 +19,35 @@ input,select{width:100%;padding:12px;border:1px solid #ddd;border-radius:11px;ba
 @media(min-width:650px){.modal{align-items:center}.sheet{border-radius:20px;max-width:560px}}
 </style>
 <style>
-#smartCapture{margin:0 0 16px;padding:14px;border:1px solid #ddd;border-radius:16px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.05)}
-#smartCapture textarea{width:100%;min-height:72px;box-sizing:border-box;border:1px solid #ccc;border-radius:12px;padding:11px;font-size:15px;resize:vertical}
-#smartCapture .row{display:flex;gap:8px;margin-top:8px}
-#smartCapture button{border:0;border-radius:10px;padding:9px 13px;font-weight:600}
-#smartAdd{background:#111;color:#fff}
-#smartClear{background:#eee}
-.smart-preview{margin-top:10px;padding:10px;border-radius:10px;background:#f7f7f7;font-size:14px;line-height:1.65;display:none}
-.task-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.task-actions button{border:0;border-radius:8px;padding:6px 9px;cursor:pointer}
+  body{padding-bottom:40px}
+  #v4{max-width:760px;margin:0 auto;padding:12px}
+  #v4 *{box-sizing:border-box}
+  .v4-card{background:#fff;border:1px solid #ddd;border-radius:16px;padding:14px;margin:10px 0}
+  .v4-title{font-weight:800;font-size:18px;margin-bottom:8px}
+  .v4-input{width:100%;min-height:80px;border:1px solid #ccc;border-radius:12px;padding:11px;font-size:15px;resize:vertical}
+  .v4-btn{border:0;border-radius:10px;padding:9px 12px;cursor:pointer;font-weight:700}
+  .v4-primary{background:#111;color:#fff}
+  .v4-light{background:#eee}
+  .v4-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:12px 0}
+  .v4-tab{padding:10px 5px;border:1px solid #ddd;border-radius:10px;background:#fff}
+  .v4-tab.active{font-weight:800;background:#f0f0f0}
+  .v4-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+  .v4-section{margin-top:16px}
+  .v4-section h3{margin:0 0 8px;font-size:16px}
+  .v4-item{border:1px solid #e0e0e0;border-radius:13px;padding:11px;margin:7px 0;background:#fff}
+  .v4-meta{font-size:13px;color:#666;margin-top:5px;line-height:1.5}
+  .v4-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .v4-actions button{border:0;border-radius:8px;padding:7px 9px}
+  .v4-empty{color:#777;font-size:14px;padding:10px}
+  .v4-modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;padding:16px;z-index:9999}
+  .v4-modal.open{display:flex}
+  .v4-modal-box{background:#fff;border-radius:16px;padding:16px;width:min(520px,100%);max-height:90vh;overflow:auto}
+  .v4-field{margin:8px 0}.v4-field label{display:block;font-size:13px;margin-bottom:4px;color:#555}
+  .v4-field input,.v4-field textarea,.v4-field select{width:100%;padding:9px;border:1px solid #ccc;border-radius:9px}
+  .v4-history{border-left:3px solid #ddd;padding-left:9px;margin-top:8px;font-size:13px;color:#555}
+  @media(max-width:520px){.v4-grid{grid-template-columns:1fr}.v4-tabs{grid-template-columns:repeat(2,1fr)}}
 </style>
-</head><body>
-<section id="smartCapture">
-  <div style="font-weight:700;margin-bottom:7px">🧠 直接輸入工作內容</div>
-  <textarea id="smartInput" placeholder="例如：陳坤澤說幫她追一下 GOWIN 進度，內容是累積量"></textarea>
-  <div class="row">
-    <button id="smartAdd" type="button">＋ 直接加入</button>
-    <button id="smartClear" type="button">清除</button>
-  </div>
-  <div id="smartPreview" class="smart-preview"></div>
-</section>
-
+<style>body > *:not(#v4){display:none!important} body{margin:0!important;background:#f7f7f7!important}</style></head><body>
 <div class="app"><div class="top"><div><h1>我的工作</h1><div class="date" id="date"></div></div><button class="small" id="clear">清除已完成</button></div>
 <button class="add" id="add">＋ 快速新增</button>
 <div class="tabs"><button class="active" data-v="today">📅 當天必做</button><button data-v="waiting">⏳ 等待事項</button><button data-v="customers">⭐ 客戶重點</button><button data-v="done">✅ 已完成</button></div>
@@ -82,129 +90,156 @@ $("clear").onclick=()=>{data=data.filter(x=>!x.done);store();render("done")};ren
 </script>
 <script>
 (function(){
-  const KEY = 'micky_work_center_v3_tasks';
-
-  function load(){ try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return[]} }
-  function save(a){localStorage.setItem(KEY,JSON.stringify(a))}
-
-  function parse(text){
-    let customer = '';
-    const m = text.match(/^([^，。,、\s]+)(?:說|表示|要|請|希望)/);
-    if(m) customer=m[1];
-
-    let subject=text;
-    subject=subject.replace(/^.*?(說|表示|要|請|希望)\s*/,'').trim();
-    subject=subject.replace(/^幫她?\s*/,'').replace(/^幫他?\s*/,'').trim();
-
-    let detail='';
-    const d=text.match(/(?:內容是|內容為|要看|關注)(.+)$/);
-    if(d){detail=d[1].trim(); subject=subject.replace(/\s*[,，]?\s*(內容是|內容為|要看|關注).+$/,'').trim();}
-
-    const cats=['開戶','當沖','授信','下單','手續費','缺款','臨櫃'];
-    let category='其他';
-    for(const c of cats){if(text.includes(c)){category=c;break;}}
-
-    let status='待處理';
-    if(/等待|等候|預計.*下週|下週.*出來|下週.*追/.test(text)) status='等待';
-
-    let date='';
-    const today=new Date();
-    if(/明天|明日/.test(text)){ const d=new Date(today); d.setDate(d.getDate()+1); date=d.toISOString().slice(0,10); }
-    else if(/今天|今日/.test(text)){date=today.toISOString().slice(0,10);}
-    else if(/下週/.test(text)){ status='等待'; }
-
-    return {customer,subject:subject||text,detail,category,status,date,raw:text};
+const KEY='micky_work_center_v4';
+const cats=['開戶','當沖','授信','下單','手續費','缺款','臨櫃','其他'];
+const $=s=>document.querySelector(s);
+function load(){try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return[]}}
+function save(a){localStorage.setItem(KEY,JSON.stringify(a))}
+function iso(d){return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10)}
+function tomorrow(){let d=new Date();d.setDate(d.getDate()+1);return iso(d)}
+function weekRange(){let d=new Date(), day=d.getDay(), diff=day===0?-6:1-day;let mon=new Date(d);mon.setDate(d.getDate()+diff);let sun=new Date(mon);sun.setDate(mon.getDate()+6);return [iso(mon),iso(sun)]}
+function parseNatural(raw){
+  let s=raw.trim(), customer='', date='', time='', status='待處理', category='其他';
+  let m=s.match(/^([^，。,、\s]+?)(?:說|表示|要|希望|請|那個)/); if(m) customer=m[1];
+  const dateMatch=s.match(/(今天|今日|明天|明日|下週[一二三四五六日天]?)/);
+  if(dateMatch){
+    const w=dateMatch[1];
+    if(w.includes('今天')||w.includes('今日')) date=iso(new Date());
+    else if(w.includes('明')) date=tomorrow();
+    else status='等待';
   }
-
-  function showPreview(x){
-    const p=document.getElementById('smartPreview');
-    p.style.display='block';
-    p.innerHTML='<b>系統整理：</b><br>'+
-      '客戶：'+(x.customer||'未指定')+'<br>'+
-      '事項：'+x.subject+'<br>'+
-      (x.detail?'內容：'+x.detail+'<br>':'')+
-      '分類：'+x.category+'<br>'+
-      '狀態：'+x.status+
-      (x.date?'<br>日期：'+x.date:'');
+  const tm=s.match(/(?:上午|下午|早上|晚上)?\s*(\d{1,2})(?::|點|時)(\d{1,2})?/);
+  if(tm){let h=+tm[1], min=+(tm[2]||0); if(/下午|晚上/.test(s)&&h<12)h+=12; time=String(h).padStart(2,'0')+':'+String(min).padStart(2,'0')}
+  for(const c of cats) if(s.includes(c)){category=c;break}
+  if(/等待|等候|預計.*出來|下週.*出來/.test(s)) status='等待';
+  let subject=s;
+  if(customer) subject=subject.replace(customer,'').trim();
+  subject=subject.replace(/^(說|表示|要|希望|請)\s*/,'').trim();
+  if(subject.includes('明天')) subject=subject.replace(/明天/,'').trim();
+  if(subject.includes('明日')) subject=subject.replace(/明日/,'').trim();
+  subject=subject.replace(/^(上午|下午|早上|晚上)?\s*\d{1,2}(?::|點|時)\d{1,2}?/,'').trim();
+  if(!subject)subject=s;
+  if(category!=='其他' && /開當沖|申請當沖/.test(s)) subject='開當沖';
+  let detail='';
+  const dm=s.match(/(?:內容是|內容為|關注|備註)[：:\s]*(.+)$/); if(dm)detail=dm[1].trim();
+  return {id:Date.now()+Math.random(),customer,subject,detail,category,status,date,time,history:[{at:new Date().toLocaleString('zh-TW'),text:'建立：'+raw}]};
+}
+function mergeExisting(x){
+  const arr=load();
+  const idx=arr.findIndex(t=>x.customer && t.customer===x.customer && (
+    (x.subject&&t.subject&&t.subject.includes(x.subject.replace('開',''))) ||
+    (x.subject&&t.subject&&x.subject.includes(t.subject.replace('開',''))) ||
+    (x.detail&&t.detail&&t.detail.includes(x.detail))
+  ));
+  if(idx>=0){
+    const t=arr[idx];
+    const old={...t};
+    if(x.status==='等待')t.status='等待';
+    if(x.date)t.date=x.date;
+    if(x.time)t.time=x.time;
+    if(x.category!=='其他')t.category=x.category;
+    if(x.subject)t.subject=x.subject;
+    if(x.detail)t.detail=x.detail;
+    t.history=t.history||[];
+    t.history.push({at:new Date().toLocaleString('zh-TW'),text:'更新：'+x.history[0].text});
+    arr[idx]=t;save(arr);return t;
   }
-
-  function addTask(){
-    const input=document.getElementById('smartInput');
-    const text=input.value.trim();
-    if(!text)return;
-    const x=parse(text);
-    const arr=load();
-    x.id=Date.now();
-    arr.unshift(x);
-    save(arr);
-    showPreview(x);
-    input.value='';
-    // Also attempt to use the original site's add-task function if exposed.
-    if(typeof window.render==='function') window.render();
-    if(typeof window.renderTasks==='function') window.renderTasks();
-    alert('已加入工作中心');
-  }
-
-  document.getElementById('smartAdd').onclick=addTask;
-  document.getElementById('smartClear').onclick=function(){
-    document.getElementById('smartInput').value='';
-    document.getElementById('smartPreview').style.display='none';
+  arr.unshift(x);save(arr);return x;
+}
+function isWeek(date){if(!date)return false;let [a,b]=weekRange();return date>=a&&date<=b}
+function itemHTML(t){
+  return `<div class="v4-item">
+    <div><b>${esc(t.customer||'未指定客戶')}</b>｜${esc(t.subject)}</div>
+    ${t.detail?`<div class="v4-meta">內容：${esc(t.detail)}</div>`:''}
+    <div class="v4-meta">${esc(t.category)} · ${esc(t.status)}${t.date?' · '+t.date:''}${t.time?' '+t.time:''}</div>
+    ${t.history?.length?`<div class="v4-history">最新：${esc(t.history[t.history.length-1].text)}</div>`:''}
+    <div class="v4-actions">
+      <button onclick="v4edit('${t.id}')">✏️ 編輯</button>
+      <button onclick="v4complete('${t.id}')">✅ 完成</button>
+      <button onclick="v4delete('${t.id}')">🗑️ 刪除</button>
+    </div>
+  </div>`;
+}
+function esc(x){return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function render(){
+  const arr=load().filter(t=>t.status!=='已完成');
+  const done=load().filter(t=>t.status==='已完成');
+  const tod=iso(new Date()), tom=tomorrow(), [ws,we]=weekRange();
+  const important=[...new Map(arr.filter(t=>t.customer).map(t=>[t.customer,t])).values()];
+  const groups=[
+    ['📅 當天必做',arr.filter(t=>t.date===tod)],
+    ['🔔 明日必做',arr.filter(t=>t.date===tom)],
+    ['⏳ 等待事項',arr.filter(t=>t.status==='等待')],
+    ['🗓️ 本週行事曆',arr.filter(t=>isWeek(t.date))],
+    ['⭐ 客戶重點',important],
+    ['✅ 已完成',done]
+  ];
+  $('#v4content').innerHTML=groups.map(g=>`<section class="v4-section"><h3>${g[0]}</h3>${g[1].length?g[1].map(itemHTML).join(''):'<div class="v4-empty">目前沒有事項</div>'}</section>`).join('');
+}
+window.v4edit=function(id){
+  const t=load().find(x=>String(x.id)===String(id));if(!t)return;
+  $('#v4modal').classList.add('open');
+  $('#eId').value=t.id;$('#eCustomer').value=t.customer||'';$('#eSubject').value=t.subject||'';
+  $('#eDetail').value=t.detail||'';$('#eCategory').value=t.category||'其他';$('#eStatus').value=t.status||'待處理';
+  $('#eDate').value=t.date||'';$('#eTime').value=t.time||'';
+};
+window.v4delete=function(id){if(!confirm('確定刪除這筆事項？'))return;save(load().filter(x=>String(x.id)!==String(id)));render()}
+window.v4complete=function(id){let a=load(),t=a.find(x=>String(x.id)===String(id));if(!t)return;t.status='已完成';t.history=t.history||[];t.history.push({at:new Date().toLocaleString('zh-TW'),text:'標記完成'});save(a);render()}
+function build(){
+  const root=document.createElement('div');root.id='v4';
+  root.innerHTML=`
+  <div class="v4-card">
+    <div class="v4-title">🧠 有事情直接打進來</div>
+    <textarea id="v4input" class="v4-input" placeholder="例如：王力宏明天要開當沖"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button id="v4add" class="v4-btn v4-primary">＋直接加入</button>
+      <button id="v4clear" class="v4-btn v4-light">清除</button>
+    </div>
+    <div id="v4notice" class="v4-meta"></div>
+  </div>
+  <div class="v4-tabs">
+    <button class="v4-tab active" onclick="v4scroll('day')">📅 當天必做</button>
+    <button class="v4-tab" onclick="v4scroll('tom')">🔔 明日必做</button>
+    <button class="v4-tab" onclick="v4scroll('week')">🗓️ 本週行事曆</button>
+    <button class="v4-tab" onclick="v4scroll('wait')">⏳ 等待事項</button>
+    <button class="v4-tab" onclick="v4scroll('cust')">⭐ 客戶重點</button>
+    <button class="v4-tab" onclick="v4scroll('done')">✅ 已完成</button>
+  </div>
+  <div id="v4content"></div>
+  <div id="v4modal" class="v4-modal"><div class="v4-modal-box">
+    <div class="v4-title">✏️ 編輯事項</div>
+    <input type="hidden" id="eId">
+    <div class="v4-field"><label>客戶</label><input id="eCustomer"></div>
+    <div class="v4-field"><label>事項</label><input id="eSubject"></div>
+    <div class="v4-field"><label>內容／備註</label><textarea id="eDetail"></textarea></div>
+    <div class="v4-grid">
+      <div class="v4-field"><label>分類</label><select id="eCategory">${cats.map(c=>`<option>${c}</option>`).join('')}</select></div>
+      <div class="v4-field"><label>狀態</label><select id="eStatus"><option>待處理</option><option>等待</option><option>已完成</option></select></div>
+      <div class="v4-field"><label>日期</label><input type="date" id="eDate"></div>
+      <div class="v4-field"><label>時間</label><input type="time" id="eTime"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px"><button id="eSave" class="v4-btn v4-primary">儲存修改</button><button id="eCancel" class="v4-btn v4-light">取消</button></div>
+  </div></div>`;
+  document.body.prepend(root);
+  $('#v4add').onclick=()=>{
+    const raw=$('#v4input').value.trim();if(!raw)return;
+    const x=parseNatural(raw), t=mergeExisting(x);
+    $('#v4notice').textContent=`已整理：${t.customer||'未指定客戶'}｜${t.subject} · ${t.category} · ${t.status}${t.date?' · '+t.date:''}`;
+    $('#v4input').value='';render();
   };
-
-  // Global edit dialog for v3 records.
-  window.editSmartTask=function(id){
-    const arr=load(), t=arr.find(x=>x.id===id);
-    if(!t)return;
-    const customer=prompt('客戶：',t.customer||'');
-    if(customer===null)return;
-    const subject=prompt('事項：',t.subject||'');
-    if(subject===null)return;
-    const detail=prompt('內容／備註：',t.detail||'');
-    if(detail===null)return;
-    const date=prompt('日期（YYYY-MM-DD，可留空）：',t.date||'');
-    if(date===null)return;
-    t.customer=customer.trim(); t.subject=subject.trim(); t.detail=detail.trim(); t.date=date.trim();
-    save(arr);
-    renderSmartList();
+  $('#v4clear').onclick=()=>{$('#v4input').value='';$('#v4notice').textContent=''};
+  $('#eCancel').onclick=()=>$('#v4modal').classList.remove('open');
+  $('#eSave').onclick=()=>{
+    let a=load(),t=a.find(x=>String(x.id)===$('#eId').value);if(!t)return;
+    t.customer=$('#eCustomer').value.trim();t.subject=$('#eSubject').value.trim();t.detail=$('#eDetail').value.trim();
+    t.category=$('#eCategory').value;t.status=$('#eStatus').value;t.date=$('#eDate').value;t.time=$('#eTime').value;
+    t.history=t.history||[];t.history.push({at:new Date().toLocaleString('zh-TW'),text:'手動編輯'});
+    save(a);$('#v4modal').classList.remove('open');render();
   };
-
-  window.deleteSmartTask=function(id){
-    if(!confirm('確定刪除這筆事項？'))return;
-    save(load().filter(x=>x.id!==id));
-    renderSmartList();
-  };
-
-  window.completeSmartTask=function(id){
-    const arr=load(), t=arr.find(x=>x.id===id);
-    if(!t)return;
-    t.status='已完成';
-    save(arr);
-    renderSmartList();
-  };
-
-  function renderSmartList(){
-    let box=document.getElementById('smartV3List');
-    if(!box){
-      box=document.createElement('div'); box.id='smartV3List';
-      const app=document.querySelector('#app')||document.body;
-      app.prepend(box);
-    }
-    const arr=load();
-    box.innerHTML=arr.length?'<div style="font-weight:700;margin:8px 0">📌 最近新增</div>':'';
-    arr.slice(0,20).forEach(t=>{
-      const card=document.createElement('div');
-      card.style.cssText='border:1px solid #e3e3e3;border-radius:14px;padding:12px;margin:8px 0;background:#fff';
-      card.innerHTML='<div><b>'+(t.customer||'未指定客戶')+'</b>｜'+t.subject+'</div>'+
-        (t.detail?'<div style="font-size:14px;margin-top:4px">內容：'+t.detail+'</div>':'')+
-        '<div style="font-size:13px;color:#666;margin-top:4px">'+t.category+' · '+t.status+(t.date?' · '+t.date:'')+'</div>'+
-        '<div class="task-actions">'+
-        '<button onclick="editSmartTask('+t.id+')">✏️ 編輯</button>'+
-        '<button onclick="completeSmartTask('+t.id+')">✅ 完成</button>'+
-        '<button onclick="deleteSmartTask('+t.id+')">🗑️ 刪除</button></div>';
-      box.appendChild(card);
-    });
-  }
-  renderSmartList();
+  render();
+}
+window.v4scroll=function(type){const map={day:'📅 當天必做',tom:'🔔 明日必做',week:'🗓️ 本週行事曆',wait:'⏳ 等待事項',cust:'⭐ 客戶重點',done:'✅ 已完成'};const hs=[...document.querySelectorAll('.v4-section h3')];const h=hs.find(x=>x.textContent===map[type]);if(h)h.scrollIntoView({behavior:'smooth',block:'start'})}
+build();
 })();
 </script>
 </body></html>
