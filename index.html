@@ -283,7 +283,7 @@ function parse(raw){
  if(am){
    account=am[1];
    const after=s.slice(am.index+am[1].length);
-   const ac=after.match(/^\s*([\u4e00-\u9fff]{2,4}?)(?=$|[\s，,。；;、]|要|有|去|在|找|說|表示|希望|請|幫|追|開|申請|辦理|調整|約|送|訪|簽|當沖|授信|額度|手續費|臨櫃|代辦|開戶)/);
+   const ac=after.match(/^\s*([\u4e00-\u9fff]{2,3})(?=$|[\s，,。；;、]|要|有|去|在|找|說|表示|希望|請|幫|追|開|申請|辦理|調整|約|送|訪|簽|當沖|授信|額度|手續費|臨櫃|代辦|開戶)/);
    if(ac){accountCustomer=ac[1];customer=accountCustomer;}
    s=s.slice(0,am.index)+s.slice(am.index+am[1].length);
    s=s.trim();
@@ -311,9 +311,9 @@ function parse(raw){
  // ===== 3. 再辨識客戶 =====
  // 日期可能出現在句首、姓名後面或句中；先保護日期後，再從剩餘文字找客戶。
  // 例如：今天董先生有下單、董先生下週三、下週三董先生要開額度，都要能拆開。
- const title=/([\u4e00-\u9fff]{2,6}(?:先生|小姐|女士|太太|媽媽|媽咪|阿姨|阿嬤|奶奶|叔叔|伯伯|阿伯|阿公|爺爺|老師|老闆|老闆娘|經理|主任|總|哥|姐))/;
+ const title=/([\u4e00-\u9fff]{2,3}(?:先生|小姐|女士|太太|媽媽|媽咪|阿姨|阿嬤|奶奶|叔叔|伯伯|阿伯|阿公|爺爺|老師|老闆|老闆娘|經理|主任|總|哥|姐))/;
  const boundary=/(?=\s|__DATE|$|要|說|表示|希望|請|幫|追|開|申請|辦理|調整|約|送|訪|簽|當沖|授信|額度|手續費|臨櫃|代辦|開戶)/;
- const generic=new RegExp('([\\u4e00-\\u9fff]{2,4}?)'+boundary.source);
+ const generic=new RegExp('([\\u4e00-\\u9fff]{2,3}?)'+boundary.source);
  // 三字中文姓名的保底辨識：姓氏＋兩個名字。只在前面的稱謂/帳號規則都沒抓到時使用。
  const surnamePattern='(?:陳|王|李|張|林|黃|吳|劉|蔡|楊|許|鄭|謝|郭|洪|邱|曾|廖|賴|徐|周|葉|蘇|莊|呂|江|何|蕭|羅|高|潘|朱|簡|鍾|彭|游|詹|胡|施|沈|余|盧|梁|趙|顏|柯|翁|魏|戴|范|方|宋|鄧|杜|傅|侯|曹|薛|丁|阮|馬|董|唐|石|紀|姚|溫|康|黎|龔|嚴|金|陸|毛|崔|白|田|程|史|馮|邵|姜|喬|段|雷|夏|駱|郝|孔|邢|凌|包|萬|顧|樊)';
  const surname3=new RegExp('('+surnamePattern+'[\u4e00-\u9fff]{2})');
@@ -428,7 +428,7 @@ function parse(raw){
    category='約見面';
  else if(/額度|調額|開額度|調整額度/.test(original))
    category='額度調整';
- else if(/(?:^|[^a-z])t\s*\+?\s*5(?:$|[^a-z])|t5|不限用途|信用|融資融券|便利貸款|交割款借貸/i.test(original))
+ else if(/(?:^|[^a-z])t\s*\+?\s*5(?:$|[^a-z])|t5|不限用途|授信|開授信|信用|融資融券|便利貸款|交割款借貸/i.test(original))
    category='授信';
  else if(/當沖/.test(original))
    category='當沖';
@@ -461,7 +461,7 @@ function parse(raw){
  else if(category==='約見面')subject='約見面';
  else if(category==='臨櫃/代辦')subject='臨櫃／代辦';
  else if(category==='手續費申請')subject='手續費申請';
- else if(category==='授信' && /t\s*\+?\s*5|t5|不限用途|便利貸款|交割款借貸|融資融券/i.test(original))subject='授信';
+ else if(category==='授信')subject='授信';
 
  let detail=(original.match(/(?:內容是|內容為|關注|備註)[：:\s]*(.+)$/)||[])[1]||'';
 
@@ -550,8 +550,8 @@ function render(){
    items=a.filter(x=>x.status!=='已完成'&&x.date===tm);
  }else if(view==='week'){
    title='🗓️ 行事曆';
-   // 行事曆不再只限制本週：所有有日期的未完成事項都能往後查看。
-   items=a.filter(x=>x.status!=='已完成'&&x.date).sort((x,y)=>(x.date||'').localeCompare(y.date||''));
+   // 所有有日期的未完成事項都列入，不限本週；依日期排序。
+   items=a.filter(x=>x.status!=='已完成'&&x.date).sort((x,y)=>((x.date||'')+(x.time||'')).localeCompare((y.date||'')+(y.time||'')));
  }else if(view==='waiting'){
    title='⏳ 等待中';
    items=a.filter(x=>x.status==='等待');
@@ -582,7 +582,8 @@ function render(){
  if(currentPage>totalPages)currentPage=totalPages;
  const pageItems=items.slice((currentPage-1)*PAGE_SIZE,currentPage*PAGE_SIZE);
 
- $('content').innerHTML=`<section class="section"><h3>${title}</h3>${pageItems.length?pageItems.map(item).join(''):'<div class="empty">目前沒有事項</div>'}</section>`;
+ const emptyText=(view==='week'&&!categoryFilter)?'目前沒有「有設定日期」的未完成事項':'目前沒有事項';
+ $('content').innerHTML=`<section class="section"><h3>${title}</h3>${pageItems.length?pageItems.map(item).join(''):`<div class="empty">${emptyText}</div>`}</section>`;
  renderPagination(total);
 }
 
@@ -665,7 +666,7 @@ $('saveEdit').onclick=function(){
  else if(/臨櫃|要來辦理|來辦理|匯撥|臨櫃申請|要來找我|來找我/.test(text))t.category='臨櫃/代辦';
  else if(/送禮|簽文件|訪客|下台南|去台南|去桃園|去.*找|約見面|見面|拜訪|拜會/.test(text))t.category='約見面';
  else if(/額度|調額|開額度|調整額度/.test(text))t.category='額度調整';
- else if(/t\s*\+?\s*5|t5|不限用途|信用|融資融券|便利貸款|交割款借貸/i.test(text))t.category='授信';
+ else if(/t\s*\+?\s*5|t5|不限用途|授信|開授信|信用|融資融券|便利貸款|交割款借貸/i.test(text))t.category='授信';
  else if(/當沖/.test(text))t.category='當沖';
  else if(/開戶/.test(text))t.category='開戶';
  t.history=t.history||[];t.history.push({at:new Date().toLocaleString('zh-TW'),text:'手動編輯'});
